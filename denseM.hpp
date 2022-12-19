@@ -459,10 +459,26 @@ denseM<INT, FLOAT> IR(const denseM<INT, FLOAT> &_A, const denseM<INT, FLOAT> &_b
 
     INT max_iter = 1000;
     INT iter = 0;
-    FLOAT r = 1;
-    FLOAT tol = 1e-16;
-    while (iter != max_iter || r > tol || r != 0)
+
+    // residual
+    denseM<INT, FLOAT> r;
+    // infinity norm of r
+    FLOAT residual = 1;
+    // tolerance for stopping iteration
+    FLOAT tol = 1e-10;
+
+    // correction
+    denseM<INT, FLOAT> c;
+    while (iter != max_iter && residual > tol && residual != 0)
     {
-        // r = b-(A*x);
+        r = _b - (_A * x);
+        residual = norm<INT, FLOAT>(r);
+
+        // for now, using LU get correction
+        c = LU_solver(L, U, P, r);
+        x = x + c;
+        iter++;
     }
+
+    return x;
 }
