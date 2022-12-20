@@ -101,6 +101,10 @@ public:
         return cols;
     }
 
+    bool is_pos_def() const
+    {
+    }
+
     FLOAT at(const INT &_row, const INT &_col) const
     {
         if (_row <= 0 || _col <= 0)
