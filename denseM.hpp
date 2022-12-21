@@ -9,110 +9,42 @@ using namespace std;
 template <typename INT, typename FLOAT>
 class denseM
 {
-private:
-    INT rows = 0;
-    INT cols = 0;
-    vector<FLOAT> matrix;
 
 public:
-    denseM()
-    {
-        matrix = {0};
-    }
+    denseM(const INT &, const INT &);
+    denseM(const INT &, const INT &, const vector<FLOAT> &);
+    denseM(const vector<FLOAT> &);
 
-    denseM(const INT &_rows, const INT &_cols)
-    {
-        rows = _rows;
-        cols = _cols;
-
-        if (rows <= 0 || cols <= 0)
-        {
-            throw invalid_size();
-        }
-
-        random_device rd;
-        mt19937 mt(rd());
-        uniform_real_distribution<FLOAT> uid(-50, 50);
-        for (INT i = 0; i < _rows * _cols; i++)
-        {
-            matrix.push_back(uid(rd));
-        }
-    }
-
-    denseM(const INT &_rows, const INT &_cols, const vector<FLOAT> &_matrix)
-    {
-        rows = _rows;
-        cols = _cols;
-
-        if (rows <= 0 || cols <= 0)
-        {
-            throw invalid_size();
-        }
-
-        if (_matrix.size() != rows * cols)
-        {
-            throw size_mismatch();
-        }
-        matrix = _matrix;
-    }
-
-    denseM(const vector<FLOAT> &diagonal)
-    {
-        rows = (INT)(diagonal.size());
-        cols = (INT)(diagonal.size());
-
-        if (diagonal.size() == 0)
-        {
-            throw invalid_size();
-        }
-        matrix.resize(diagonal.size() * diagonal.size(), 0);
-        for (INT i = 0; i < diagonal.size(); i++)
-        {
-            matrix[cols * i + i] = diagonal[i];
-        }
-    }
-
-    // change precision
     template <typename INT_alt, typename FLOAT_alt>
-    denseM(const denseM<INT_alt, FLOAT_alt> &A)
-    {
-        rows = (INT)A.get_row();
-        cols = (INT)A.get_col();
+    denseM(const denseM<INT_alt, FLOAT_alt> &);
 
-        vector<FLOAT_alt> temp = A.get_vec();
-        for (FLOAT_alt &i : temp)
-        {
-            matrix.push_back((FLOAT)i);
-        }
+    const vector<FLOAT> &get_data() const
+    {
+        return matrix_;
     }
 
-    vector<FLOAT> get_vec() const
+    INT get_num_rows() const
     {
-        return matrix;
+        return rows_;
     }
 
-    INT get_row() const
+    INT get_num_cols() const
     {
-        return rows;
+        return cols_;
     }
 
-    INT get_col() const
-    {
-        return cols;
-    }
+    bool is_symmetric() const;
 
-    bool is_pos_def() const
-    {
-    }
+    // check the value for a given row and col
+    const FLOAT at(const INT &, const INT &) const;
 
-    FLOAT at(const INT &_row, const INT &_col) const
-    {
-        if (_row <= 0 || _col <= 0)
-        {
-            throw invalid_size();
-        }
-        return matrix[(_row - 1) * cols + (_col - 1)];
-    }
+    // check and modify the value in the 1d vector for a given index
+    const FLOAT at(const INT &) const;
+
+    // overloading [] for checking the value in the 1d vector for a given index, allows modification
+    FLOAT &operator[](INT);
+
+    const FLOAT &operator[](INT) const;
 
     /**
      * @brief Exception occurs when given matrix vector mismatch the given size
@@ -135,16 +67,122 @@ public:
     public:
         size_mismatch() : invalid_argument("The matrix vector does not have the same amount of elements as the given size."){};
     };
+
+private:
+    INT rows_ = 0;
+    INT cols_ = 0;
+    vector<FLOAT> matrix_;
 };
 
+// preallocate memory
 template <typename INT, typename FLOAT>
-ostream &operator<<(ostream &out, const denseM<INT, FLOAT> &_M)
+denseM<INT, FLOAT>::denseM(const INT &rows, const INT &cols)
+    : rows_(rows), cols_(cols)
 {
-    vector<FLOAT> temp = _M.get_vec();
+    matrix_.resize(cols * rows);
+}
+
+template <typename INT, typename FLOAT>
+denseM<INT, FLOAT>::denseM(const INT &rows, const INT &cols, const vector<FLOAT> &matrix)
+    : rows_(rows), cols_(cols), matrix_(matrix) {}
+
+template <typename INT, typename FLOAT>
+denseM<INT, FLOAT>::denseM(const vector<FLOAT> &diagonal)
+    : rows_((INT)(diagonal.size())), cols_((INT)(diagonal.size()))
+{
+
+    if (diagonal.size() == 0)
+    {
+        throw invalid_size();
+    }
+    matrix_.resize(diagonal.size() * diagonal.size(), 0);
+    for (INT i = 0; i < diagonal.size(); i++)
+    {
+        matrix_[cols_ * i + i] = diagonal[i];
+    }
+}
+
+template <typename INT, typename FLOAT>
+template <typename INT_alt, typename FLOAT_alt>
+denseM<INT, FLOAT>::denseM(const denseM<INT_alt, FLOAT_alt> &A)
+    : rows_((INT)A.get_num_rows()), cols_((INT)A.get_num_cols())
+{
+    vector<FLOAT_alt> temp = A.get_data();
+    for (FLOAT_alt &i : temp)
+    {
+        matrix_.push_back((FLOAT)i);
+    }
+}
+
+template <typename INT, typename FLOAT>
+bool denseM<INT, FLOAT>::is_symmetric() const
+{
+    // Matrix must be a square matrix
+    if (rows_ != cols_)
+    {
+        return 0;
+    }
+    for (INT i = 0; i < rows_; i++)
+    {
+        for (INT j = 0; j < cols_; j++)
+        {
+            if (matrix_[i * cols_ + j] != matrix_[j * cols_ + i])
+            {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+template <typename INT, typename FLOAT>
+const FLOAT denseM<INT, FLOAT>::at(const INT &row, const INT &col) const
+{
+    if (row <= 0 || col <= 0)
+    {
+        throw invalid_size();
+    }
+    return matrix_[row * cols_ + col];
+}
+
+template <typename INT, typename FLOAT>
+const FLOAT denseM<INT, FLOAT>::at(const INT &index) const
+{
+    if (index >= cols_ * rows_ || index <= 0)
+    {
+        throw invalid_size();
+    }
+    return matrix_[index];
+}
+
+template <typename INT, typename FLOAT>
+FLOAT &denseM<INT, FLOAT>::operator[](INT index)
+{
+    if (index >= cols_ * rows_ || index < 0)
+    {
+        throw invalid_size();
+    }
+    return matrix_[index];
+}
+
+template <typename INT, typename FLOAT>
+const FLOAT &denseM<INT, FLOAT>::operator[](INT index) const
+{
+    if (index >= cols_ * rows_ || index < 0)
+    {
+        throw invalid_size();
+    }
+    return matrix_[index];
+}
+
+template <typename INT, typename FLOAT>
+ostream &operator<<(ostream &out, const denseM<INT, FLOAT> &M)
+{
+    vector<FLOAT> temp = M.get_data();
     for (uint64_t i = 0; i < temp.size(); i++)
     {
         out << temp[i] << " ";
-        if ((i + 1) % _M.get_col() == 0)
+        if ((i + 1) % M.get_num_cols() == 0)
         {
             out << "\n";
         }
@@ -153,77 +191,63 @@ ostream &operator<<(ostream &out, const denseM<INT, FLOAT> &_M)
 }
 
 template <typename INT, typename FLOAT>
-denseM<INT, FLOAT> operator+(const denseM<INT, FLOAT> &_M1, const denseM<INT, FLOAT> &_M2)
+denseM<INT, FLOAT> operator+(const denseM<INT, FLOAT> &M1, const denseM<INT, FLOAT> &M2)
 {
     // Exception occurs when given matrices have different size
-    if (_M1.get_col() != _M2.get_col() || _M1.get_row() != _M2.get_row())
+    if (M1.get_num_cols() != M2.get_num_cols() || M1.get_num_rows() != M2.get_num_rows())
     {
         throw invalid_argument("These two matrices are not able to add each other.");
     }
 
-    INT Row = _M1.get_row();
-    INT Col = _M1.get_col();
-    vector<FLOAT> M1 = _M1.get_vec();
-    vector<FLOAT> M2 = _M2.get_vec();
-    vector<FLOAT> sum(Row * Col, 0.0);
+    INT Row = M1.get_num_rows();
+    INT Col = M1.get_num_cols();
+    denseM<INT, FLOAT> sum(Row, Col);
 
-    for (INT i = 0; i < Row; i++)
+    for (INT i = 0; i < Row * Col; i++)
     {
-        for (INT j = 0; j < Col; j++)
-        {
-            sum[i * Col + j] += M1[i * Col + j] + M2[i * Col + j];
-        }
+        sum[i] += M1[i] + M2[i];
     }
-
-    denseM<INT, FLOAT> _sum(Row, Col, sum);
-    return _sum;
+    return sum;
 }
 
 template <typename INT, typename FLOAT>
-denseM<INT, FLOAT> operator-(const denseM<INT, FLOAT> &_M1, const denseM<INT, FLOAT> &_M2)
+denseM<INT, FLOAT> operator-(const denseM<INT, FLOAT> &M1, const denseM<INT, FLOAT> &M2)
 {
     // Exception occurs when given matrices have different size
-    if (_M1.get_col() != _M2.get_col() || _M1.get_row() != _M2.get_row())
+    if (M1.get_num_cols() != M2.get_num_cols() || M1.get_num_rows() != M2.get_num_rows())
     {
         throw invalid_argument("These two matrices are not able to subtract each other.");
     }
 
-    INT Row = _M1.get_row();
-    INT Col = _M1.get_col();
-    vector<FLOAT> M1 = _M1.get_vec();
-    vector<FLOAT> M2 = _M2.get_vec();
-    vector<FLOAT> sub(Row * Col, 0.0);
+    INT Row = M1.get_num_rows();
+    INT Col = M1.get_num_cols();
 
-    for (INT i = 0; i < Row; i++)
+    denseM<INT, FLOAT> sub(Row, Col);
+
+    for (INT i = 0; i < Row * Col; i++)
     {
-        for (INT j = 0; j < Col; j++)
-        {
-            sub[i * Col + j] += M1[i * Col + j] - M2[i * Col + j];
-        }
+        sub[i] += M1[i] - M2[i];
     }
 
-    denseM<INT, FLOAT> _sub(Row, Col, sub);
-    return _sub;
+    return sub;
 }
 
 template <typename INT, typename FLOAT>
-denseM<INT, FLOAT> operator*(const denseM<INT, FLOAT> &_M1, const denseM<INT, FLOAT> &_M2)
+denseM<INT, FLOAT> operator*(const denseM<INT, FLOAT> &M1, const denseM<INT, FLOAT> &M2)
 {
     // Exception occurs when given matrices are not able to multiply each other
-    if (_M1.get_col() != _M2.get_row())
+    if (M1.get_num_cols() != M2.get_num_rows())
     {
         throw invalid_argument("These two matrices are not able to multiply each other.");
     }
 
-    INT row1 = _M1.get_row();
-    INT row2 = _M2.get_row();
-    INT col1 = _M1.get_col();
-    INT col2 = _M2.get_col();
+    INT row1 = M1.get_num_rows();
+    INT row2 = M2.get_num_rows();
+    INT col1 = M1.get_num_cols();
+    INT col2 = M2.get_num_cols();
 
     // size of the multiplication result is rows of matrix1 with cols of matrix2
-    vector<FLOAT> result(row1 * col2);
-    vector<FLOAT> M1 = _M1.get_vec();
-    vector<FLOAT> M2 = _M2.get_vec();
+    denseM<INT, FLOAT> result(row1, col2);
 
     for (uint64_t i = 0; i < row1; i++)
     {
@@ -235,10 +259,11 @@ denseM<INT, FLOAT> operator*(const denseM<INT, FLOAT> &_M1, const denseM<INT, FL
             }
         }
     }
-    denseM<INT, FLOAT> mult(row1, col2, result);
-    return mult;
+
+    return result;
 }
 
+/*
 // infinity norm of denseM
 template <typename INT, typename FLOAT>
 FLOAT norm(const denseM<INT, FLOAT> &_M)
@@ -262,7 +287,8 @@ FLOAT norm(const denseM<INT, FLOAT> &_M)
 }
 
 template <typename INT, typename FLOAT>
-void LU_withPivot(const denseM<INT, FLOAT> &_A, denseM<INT, FLOAT> &_P, denseM<INT, FLOAT> &_L, denseM<INT, FLOAT> &_U)
+void LU_withPivot(const denseM<INT, FLOAT> &_A,
+                  denseM<INT, FLOAT> &_P, denseM<INT, FLOAT> &_L, denseM<INT, FLOAT> &_U)
 {
     // Exception occurs when given matrix is not a square matrix
     if (_A.get_col() != _A.get_row())
@@ -447,9 +473,10 @@ denseM<INT, FLOAT> LU_solver(const denseM<INT, FLOAT> &_L, const denseM<INT, FLO
     return x;
 }
 
-template <typename INT, typename FLOAT>
+template <typename FACT, typename RES, typename INT, typename FLOAT>
 denseM<INT, FLOAT> IR(const denseM<INT, FLOAT> &_A, const denseM<INT, FLOAT> &_b)
 {
+    denseM<INT, FACT> Af(A);
     // permutation matrix from LU-decomposition
     denseM<INT, FLOAT> P;
     // lower triangular matrix from LU-decomposition
@@ -457,15 +484,17 @@ denseM<INT, FLOAT> IR(const denseM<INT, FLOAT> &_A, const denseM<INT, FLOAT> &_b
     // upper triangular matrix from LU-decomposition
     denseM<INT, FLOAT> U;
     // Get P, L, U
-    LU_withPivot(_A, P, L, U);
+    LU_withPivot(Af, P, L, U);
 
+    // L,U must be in FACT precision
+    // LU_solver returns x in FACT precision
     denseM<INT, FLOAT> x = LU_solver(L, U, P, _b);
 
     INT max_iter = 1000;
     INT iter = 0;
 
     // residual
-    denseM<INT, FLOAT> r;
+    denseM<INT, RES> r;
     // infinity norm of r
     FLOAT residual = 1;
     // tolerance for stopping iteration
@@ -475,7 +504,7 @@ denseM<INT, FLOAT> IR(const denseM<INT, FLOAT> &_A, const denseM<INT, FLOAT> &_b
     denseM<INT, FLOAT> c;
     while (iter != max_iter && residual > tol && residual != 0)
     {
-        r = _b - (_A * x);
+        r = _b - (_A * denseM<INT,RES>(x);
         residual = norm<INT, FLOAT>(r);
 
         // for now, using LU get correction
@@ -486,3 +515,6 @@ denseM<INT, FLOAT> IR(const denseM<INT, FLOAT> &_A, const denseM<INT, FLOAT> &_b
 
     return x;
 }
+
+denseM<int, double> IR<float, double>(_A, _b)
+*/
