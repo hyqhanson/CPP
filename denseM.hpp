@@ -3,10 +3,10 @@
  * @author Yiqi Huang (huany132@mcmaster.ca)
  * @brief Construct a class that allow to store a dense matrix in any floating-point
  * number type vector, and overload several basic matrix arithmetics. The main goal is
- * using the class and the related functions, to implement LU-decomposition and Iterative
- * Refinement which supports three precisions.
+ * using the class and the related functions, to implement LU-decomposition/Cholesky
+ * decomposition and Iterative Refinement which uses three floating-point number precisions.
  * @version 0.1
- * @date 2022-12-15
+ * @date 2022-12-14
  *
  * @copyright Copyright (c) 2022
  *
@@ -17,7 +17,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
-#include <random>
+#include <cmath>
 using namespace std;
 
 /**
@@ -168,8 +168,8 @@ private:
 };
 
 /**
- * @brief Construct a new denseM object with zeros, given the sizes.
- * Preallocating the memory.
+ * @brief Construct a new denseM object with zeros in the matrix, given the sizes.
+ * It is for preallocating the memory.
  *
  * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
@@ -189,7 +189,8 @@ denseM<INT, FLOAT>::denseM(const INT &rows, const INT &cols)
 
 /**
  * @brief Construct a new denseM object with specific elements, given the
- * sizes and any floating-point number type vector contains all the elements
+ * sizes and a floating-point number type vector contains all the elements
+ * of the matrix
  *
  * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
@@ -233,7 +234,7 @@ bool denseM<INT, FLOAT>::is_symmetric() const
 /**
  * @brief Construct a new denseM object with the size, the matrix vector, and a boolean
  * is-positive-definite checker. The user should know if the matrix they create is or
- * not a positive definite. Input 1 in the third argument if the user know the matrix is
+ * not positive definite. Input 1 in the third argument if the user know the matrix is
  * positive definite, input 0 if it's not and it will create a regular square matrix
  *
  * @tparam INT Any integer precision (unsigned or signed are both available)
@@ -253,7 +254,8 @@ denseM<INT, FLOAT>::denseM(const INT &size, const vector<FLOAT> &matrix, const b
 }
 
 /**
- * @brief Construct a new denseM object with another precision
+ * @brief Construct a new denseM object based on a existed denseM
+ * object with another precision.
  *
  * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
@@ -275,8 +277,8 @@ denseM<INT, FLOAT>::denseM(const denseM<INT_alt, FLOAT_alt> &M)
 
 /**
  * @brief Show the value of matrix by given row number and column number.
- * It will use the mathematical index of matrix. Example M.at(3,2) will show
- * the value at 3rd row and 2nd column
+ * It will use the mathematical index of matrix. For example, M.at(3,2) will show
+ * the value at 3rd row and 2nd column in matrix M
  *
  * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
@@ -463,7 +465,7 @@ denseM<INT, FLOAT> operator*(const denseM<INT, FLOAT> &M1, const denseM<INT, FLO
 }
 
 /**
- * @brief infinity norm of a denseM
+ * @brief infinity norm of a denseM. Finding the largest row sum of the matrix.
  *
  * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
@@ -593,8 +595,8 @@ INT LU_withPivot(denseM<INT, FLOAT> &A, vector<INT> &P)
 }
 
 /**
- * @brief Use the updated A and P from LU_withPivot(A,P), solve linear system Ax = y
- * by LU-decomposition
+ * @brief Use the updated A and P from LU_withPivot(A,P), solve linear system LUx = Pb
+ * by forward and backward substitution
  *
  * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
@@ -606,6 +608,11 @@ INT LU_withPivot(denseM<INT, FLOAT> &A, vector<INT> &P)
 template <typename INT, typename FLOAT>
 denseM<INT, FLOAT> LU_solver(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b, vector<INT> &P)
 {
+    if (A.get_num_rows() != b.get_num_rows())
+    {
+        throw invalid_argument("b should have the same column number as A.");
+    }
+
     // Receive updated A and P
     // A contains L and U key parameters
     // P contains the row swapping information
@@ -670,19 +677,34 @@ denseM<INT, FLOAT> LU_solver(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b,
 }
 
 /**
- * @brief
+ * @brief LU-decomposition with partial pivoting, it will change the denseM object A to the
+ * combination of L and U for saving memory, and modify the integer vector P to record row
+ * swapping in permutation matrix
  *
- * @tparam INT
- * @tparam FLOAT
- * @param A
- * @return denseM<INT, FLOAT>
+
+ * @param A Dense matrix, it will be modified to the combination of L and U
+
+ * @return INT exit-flag of LU-decomposition
+ * (return 0 means success, return >0 means completed but U is singular)
+ */
+
+/**
+ * @brief Cholesky decomposition will decompose a positive definite matrix A into a
+ * lower-triangular matrix L and its conjugate transpose L_T, such that L*L_T = A
+ *
+ * @tparam INT Any integer precision (unsigned or signed are both available)
+ * @tparam FLOAT Any floating-point number precision
+ * @param A Dense matrix, it will not be modified
+ * @return denseM<INT, FLOAT> A_chole, contains the combination of L and L_T
  */
 template <typename INT, typename FLOAT>
 denseM<INT, FLOAT> cholesky(const denseM<INT, FLOAT> &A)
 {
     INT size = A.get_num_cols();
-    // INT exit_flag = 0;
     denseM<INT, FLOAT> A_chole(size, size);
+
+    // Modified from
+    // https://en.wikipedia.org/wiki/Cholesky_decomposition#The_Cholesky_algorithm
     for (INT i = 0; i < size; i++)
     {
         for (INT j = 0; j < (i + 1); j++)
@@ -695,36 +717,40 @@ denseM<INT, FLOAT> cholesky(const denseM<INT, FLOAT> &A)
             // on diagonal
             if (i == j)
             {
-                /*if (A[i * size + i] < sum)
-                {
-                    exit_flag = i + 1;
-                }*/
                 A_chole[i * size + j] = sqrt(A[i * size + i] - sum);
             }
             // not on diagonal
             else
             {
-                A_chole[i * size + j] = (1.0 / A_chole[j * size + j] * (A[i * size + j] - sum));
+                A_chole[i * size + j] = ((FLOAT)(1.0) / A_chole[j * size + j] * (A[i * size + j] - sum));
                 // It is symmetric, A_chole[j,i] = A_chole[i,j]
                 A_chole[j * size + i] = A_chole[i * size + j];
             }
         }
     }
+    // Modification ends here
 
-    /*
-    if (exit_flag != 0){
-       cout << "Cholesky-decomposition is complete, the L's diagonal number in row"
-             << exit_flag << " is a complex number."
-             << "\n";
-        return exit_flag;
-    }
-    return exit_flag;*/
     return A_chole;
 }
 
+/**
+ * @brief Get the combination matrix A_chole of L and L_T from cholesky(A,P),
+ * solve linear system LL_Tx=b by forward and backward substitution
+ *
+ * @tparam INT Any integer precision (unsigned or signed are both available)
+ * @tparam FLOAT Any floating-point number precision
+ * @param A nxn dense matrix
+ * @param b nx1 dense matrix
+ * @return denseM<INT, FLOAT> nx1 dense matrix, it is the solution of the linear system
+ */
 template <typename INT, typename FLOAT>
 denseM<INT, FLOAT> cholesky_solver(const denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b)
 {
+    if (A.get_num_rows() != b.get_num_rows())
+    {
+        throw invalid_argument("b should have the same column number as A.");
+    }
+
     // Get A_chole (which contains both the lower triangular L and upper
     // triangular L's conjugate transpose L_T) from cholesky decomposition
     denseM<INT, FLOAT> A_chole = cholesky(A);
@@ -767,7 +793,11 @@ denseM<INT, FLOAT> cholesky_solver(const denseM<INT, FLOAT> &A, const denseM<INT
     return x;
 }
 /**
- * @brief
+ * @brief Using iterative refinement to solve linear system for less round off error.
+ * Including LU-decomposition and Cholesky decomposition to solve linear system inside
+ * iterations. Using three floating-point number precisions to accelerate decomposition
+ * by low-accuracy precision, and getting a more precise residual for updating the
+ * solution in each iteration by using a high-accuracy precision
  *
  * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FACT floating-point number precision used for LU-factorization
@@ -799,7 +829,7 @@ denseM<INT, FLOAT> IR(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b)
     }
 
     // max iteration
-    INT max_iter = 1000;
+    INT max_iter = 10000;
     // iteration counter
     INT iter = 0;
 
@@ -809,12 +839,41 @@ denseM<INT, FLOAT> IR(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b)
     RES residual = 1;
     // tolerance for stopping iteration
     FLOAT tol = 1e-16;
-
+    FLOAT tol2 = 1e-14;
     // correction
     denseM<INT, FLOAT> c(size, 1);
 
+    cout << "Starting iterative refinement: "
+         << "\n";
     // timing the process
     chrono::time_point start_time = chrono::steady_clock::now();
+
+    // If A is a positive definite matrix, use Cholesky-decomposition
+    if (A.get_is_pos_def() == 1)
+    {
+        denseM<INT, FLOAT> x = cholesky_solver(Af, bf);
+        while (iter != max_iter && residual > tol2 && residual != 0)
+        {
+            // residual must be in RES precision
+            r = b - (A * denseM<INT, RES>(x));
+            residual = norm<INT, RES>(r);
+
+            // Using Cholesky again in FACT precision to get correction
+            c = cholesky_solver(Af, denseM<INT, FACT>(r));
+            x = x + c;
+            iter++;
+        }
+
+        chrono::time_point end_time = chrono::steady_clock::now();
+        chrono::duration<double> elapsed_time_seconds = end_time - start_time;
+        cout << "Elapsed time: " << elapsed_time_seconds.count() << " seconds\n";
+        cout << "The total iteration is " << iter << "\n";
+        cout << "The error in the last iteration is " << residual << "\n";
+        cout << "Iterative refinement succeeded!"
+             << "\n"
+             << "x = ";
+        return x;
+    }
 
     // Calculate x0 for starting the iteration
     // L,U in Af must be in FACT precision
@@ -838,5 +897,8 @@ denseM<INT, FLOAT> IR(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b)
     cout << "Elapsed time: " << elapsed_time_seconds.count() << " seconds\n";
     cout << "The total iteration is " << iter << "\n";
     cout << "The error in the last iteration is " << residual << "\n";
+    cout << "Iterative refinement succeeded!"
+         << "\n"
+         << "x = ";
     return x;
 }
