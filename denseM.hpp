@@ -18,15 +18,15 @@
 #include <string>
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 using namespace std;
 
 /**
  * @brief Construct the class of dense matrix
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  */
-template <typename INT, typename FLOAT>
+template <typename FLOAT>
 class denseM
 {
 public:
@@ -34,28 +34,34 @@ public:
      * @brief Construct a new denseM object with zeros, given the sizes
      *
      */
-    denseM(const INT &, const INT &);
+    denseM(const uint64_t &, const uint64_t &);
 
     /**
      * @brief Construct a new denseM object with specific elements, given the
      * sizes and any floating-point number type vector contains all the elements
      *
      */
-    denseM(const INT &, const INT &, const vector<FLOAT> &);
+    denseM(const uint64_t &, const uint64_t &, const vector<FLOAT> &);
 
     /**
      * @brief Construct a new denseM object accepts positive-definite matrix,
      * by given the size, the matrix itself, and a is-positive-definite checker
      *
      */
-    denseM(const INT &, const vector<FLOAT> &, const bool &);
+    denseM(const uint64_t &, const vector<FLOAT> &, const bool &);
 
     /**
-     * @brief Construct a new denseM object by given a floating-point number
-     * vector. It will construct a diagonal matrix
+     * @brief Construct a new denseM object by given a integer
+     *  It will construct a nxn identity matrix
      *
      */
-    denseM(const vector<FLOAT> &);
+    denseM(const uint64_t &);
+
+    /**
+     * @brief Construct a new denseM object given the size and file name
+     *
+     */
+    denseM(const uint64_t &, const uint64_t &, const string &);
 
     /**
      * @brief Construct a new denseM object with another precision
@@ -63,8 +69,8 @@ public:
      * @tparam INT_alt Another integer precision (It could remain the same)
      * @tparam FLOAT_alt Another floating-point number precision
      */
-    template <typename INT_alt, typename FLOAT_alt>
-    denseM(const denseM<INT_alt, FLOAT_alt> &);
+    template <typename FLOAT_alt>
+    denseM(const denseM<FLOAT_alt> &);
 
     /**
      * @brief Get the vector which stores all the elements of matrix
@@ -79,9 +85,9 @@ public:
     /**
      * @brief Get the number of rows
      *
-     * @return INT rows_ is the number of rows of the current matrix
+     * @return uint64_t Rows_ is the number of rows of the current matrix
      */
-    INT get_num_rows() const
+    uint64_t get_num_rows() const
     {
         return rows_;
     }
@@ -89,9 +95,9 @@ public:
     /**
      * @brief Get the number of columns
      *
-     * @return INT cols_ is the number of columns of the current matrix
+     * @return uint64_t Cols_ is the number of columns of the current matrix
      */
-    INT get_num_cols() const
+    uint64_t get_num_cols() const
     {
         return cols_;
     }
@@ -120,7 +126,7 @@ public:
      *
      * @return const FLOAT
      */
-    const FLOAT at(const INT &, const INT &) const;
+    const FLOAT at(const uint64_t &, const uint64_t &) const;
 
     /**
      * @brief overloading operator[] for checking the value in the 1d vector
@@ -128,7 +134,7 @@ public:
      *
      * @return FLOAT& the reference of the elements found by index
      */
-    FLOAT &operator[](INT);
+    FLOAT &operator[](uint64_t);
 
     /**
      * @brief overloading operator[] for checking the value in the 1d vector
@@ -136,17 +142,32 @@ public:
      *
      * @return const FLOAT& the reference of the elements found by index
      */
-    const FLOAT &operator[](INT) const;
+    const FLOAT &operator[](uint64_t) const;
 
     /**
-     * @brief Exception occurs when given matrix vector mismatch the given size
-     * of rows and columns
+     * @brief Output denseM object into a file
+     *
+     */
+    void output(const string &) const;
+
+    /**
+     * @brief Exception occurs when given matrix vector has invalid number of rows or columns
      *
      */
     class invalid_size : public invalid_argument
     {
     public:
         invalid_size() : invalid_argument("The matrix size can only be positive."){};
+    };
+
+    /**
+     * @brief Exception occurs when given matrix vector has invalid number of rows or columns
+     *
+     */
+    class index_overflow : public invalid_argument
+    {
+    public:
+        index_overflow() : invalid_argument("The input index is beyond the size of the matrix."){};
     };
 
     /**
@@ -161,8 +182,8 @@ public:
     };
 
 private:
-    INT rows_ = 0;
-    INT cols_ = 0;
+    uint64_t rows_ = 0;
+    uint64_t cols_ = 0;
     vector<FLOAT> matrix_;
     bool is_pos_def = 0;
 };
@@ -171,16 +192,15 @@ private:
  * @brief Construct a new denseM object with zeros in the matrix, given the sizes.
  * It is for preallocating the memory.
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param rows number of rows
  * @param cols number of columns
  */
-template <typename INT, typename FLOAT>
-denseM<INT, FLOAT>::denseM(const INT &rows, const INT &cols)
+template <typename FLOAT>
+denseM<FLOAT>::denseM(const uint64_t &rows, const uint64_t &cols)
     : rows_(rows), cols_(cols)
 {
-    if (rows <= 0 || cols <= 0)
+    if (rows == 0 || cols == 0)
     {
         throw invalid_size();
     }
@@ -192,35 +212,43 @@ denseM<INT, FLOAT>::denseM(const INT &rows, const INT &cols)
  * sizes and a floating-point number type vector contains all the elements
  * of the matrix
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param rows Number of rows
  * @param cols Number of columns
  * @param matrix A floating-point number vector contains all elements of matrix
  */
-template <typename INT, typename FLOAT>
-denseM<INT, FLOAT>::denseM(const INT &rows, const INT &cols, const vector<FLOAT> &matrix)
-    : rows_(rows), cols_(cols), matrix_(matrix) {}
+template <typename FLOAT>
+denseM<FLOAT>::denseM(const uint64_t &rows, const uint64_t &cols, const vector<FLOAT> &matrix)
+    : rows_(rows), cols_(cols), matrix_(matrix)
+{
+    if (rows == 0 || cols == 0)
+    {
+        throw invalid_size();
+    }
+    else if (rows * cols != matrix.size())
+    {
+        throw size_mismatch();
+    }
+}
 
 /**
  * @brief Check if the matrix is symmetric
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @return true if the matrix is symmetric
  * @return false if the matrix is not symmetric
  */
-template <typename INT, typename FLOAT>
-bool denseM<INT, FLOAT>::is_symmetric() const
+template <typename FLOAT>
+bool denseM<FLOAT>::is_symmetric() const
 {
     // Matrix must be a square matrix
     if (rows_ != cols_)
     {
         return 0;
     }
-    for (INT i = 0; i < rows_; i++)
+    for (uint64_t i = 0; i < rows_; i++)
     {
-        for (INT j = 0; j < cols_; j++)
+        for (uint64_t j = 0; j < cols_; j++)
         {
             if (matrix_[i * cols_ + j] != matrix_[j * cols_ + i])
             {
@@ -237,19 +265,88 @@ bool denseM<INT, FLOAT>::is_symmetric() const
  * not positive definite. Input 1 in the third argument if the user know the matrix is
  * positive definite, input 0 if it's not and it will create a regular square matrix
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param size The size of matrix
  * @param matrix A floating-point number vector contains all elements of matrix
  * @param pos_def Boolean variable, input 1 if it is positive definite, otherwise input 0
  */
-template <typename INT, typename FLOAT>
-denseM<INT, FLOAT>::denseM(const INT &size, const vector<FLOAT> &matrix, const bool &pos_def)
+template <typename FLOAT>
+denseM<FLOAT>::denseM(const uint64_t &size, const vector<FLOAT> &matrix, const bool &pos_def)
     : rows_(size), cols_(size), matrix_(matrix)
 {
     if (pos_def == 1 && this->is_symmetric() == 1)
     {
         is_pos_def = 1;
+    }
+
+    if (size == 0)
+    {
+        throw invalid_size();
+    }
+    else if (size * size != matrix.size())
+    {
+        throw size_mismatch();
+    }
+}
+
+/**
+ * @brief Construct a new denseM with an integer, create a nxn identity matrix
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param size Size of the identity matrix
+ */
+template <typename FLOAT>
+denseM<FLOAT>::denseM(const uint64_t &size)
+    : rows_(size), cols_(size)
+{
+    matrix_.resize(size * size);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        matrix_[i * size + i] = 1;
+    }
+}
+
+/**
+ * @brief Construct a new denseM object given size and a file name which contains matrix.
+ * The matrix number in the file can be separated by comma or white space.
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param rows Number of rows
+ * @param cols Number of columns
+ * @param name File's name
+ */
+template <typename FLOAT>
+denseM<FLOAT>::denseM(const uint64_t &rows, const uint64_t &cols, const string &name)
+    : rows_(rows), cols_(cols)
+{
+    if (rows == 0 || cols == 0)
+    {
+        throw invalid_size();
+    }
+    ifstream input(name);
+    if (!input.is_open())
+    {
+        cout << "There is a problem when opening the file " << name;
+        exit(EXIT_FAILURE);
+    }
+
+    // Read floating-point number from file into variable
+    FLOAT value;
+    while (input >> value)
+    {
+        // Push the value into the vector
+        matrix_.push_back(value);
+        // ignore commas
+        if (input.peek() == ',')
+        {
+            input.ignore();
+        }
+    }
+    input.close();
+
+    if (rows * cols != matrix_.size())
+    {
+        throw size_mismatch();
     }
 }
 
@@ -257,16 +354,14 @@ denseM<INT, FLOAT>::denseM(const INT &size, const vector<FLOAT> &matrix, const b
  * @brief Construct a new denseM object based on a existed denseM
  * object with another precision.
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
- * @tparam INT_alt Another integer precision (It could remain the same)
  * @tparam FLOAT_alt Another floating-point number precision
  * @param M matrix needs to change precision
  */
-template <typename INT, typename FLOAT>
-template <typename INT_alt, typename FLOAT_alt>
-denseM<INT, FLOAT>::denseM(const denseM<INT_alt, FLOAT_alt> &M)
-    : rows_((INT)M.get_num_rows()), cols_((INT)M.get_num_cols())
+template <typename FLOAT>
+template <typename FLOAT_alt>
+denseM<FLOAT>::denseM(const denseM<FLOAT_alt> &M)
+    : rows_(M.get_num_rows()), cols_(M.get_num_cols())
 {
     vector<FLOAT_alt> temp = M.get_data();
     for (FLOAT_alt &i : temp)
@@ -280,19 +375,23 @@ denseM<INT, FLOAT>::denseM(const denseM<INT_alt, FLOAT_alt> &M)
  * It will use the mathematical index of matrix. For example, M.at(3,2) will show
  * the value at 3rd row and 2nd column in matrix M
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param row Row number
  * @param col Column number
  * @return const FLOAT The value at the corresponding location in matrix
  */
-template <typename INT, typename FLOAT>
-const FLOAT denseM<INT, FLOAT>::at(const INT &row, const INT &col) const
+template <typename FLOAT>
+const FLOAT denseM<FLOAT>::at(const uint64_t &row, const uint64_t &col) const
 {
-    if (row < 0 || col < 0 || (row - 1) > rows_ || (col - 1) > cols_)
+    if (row == 0 || col == 0)
     {
         throw invalid_size();
     }
+    else if ((row - 1) > rows_ || (col - 1) > cols_)
+    {
+        throw index_overflow();
+    }
+
     return matrix_[(row - 1) * cols_ + (col - 1)];
 }
 
@@ -300,17 +399,16 @@ const FLOAT denseM<INT, FLOAT>::at(const INT &row, const INT &col) const
  * @brief Overload [] operator for finding specific elements given the index.
  * Allow modification
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param index The element's index
  * @return FLOAT& The element
  */
-template <typename INT, typename FLOAT>
-FLOAT &denseM<INT, FLOAT>::operator[](INT index)
+template <typename FLOAT>
+FLOAT &denseM<FLOAT>::operator[](uint64_t index)
 {
-    if (index >= cols_ * rows_ || index < 0)
+    if (index >= cols_ * rows_)
     {
-        throw invalid_size();
+        throw index_overflow();
     }
     return matrix_[index];
 }
@@ -319,33 +417,68 @@ FLOAT &denseM<INT, FLOAT>::operator[](INT index)
  * @brief Overload [] operator for finding specific elements given the index.
  * Does not allow modification
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param index The element's index
  * @return FLOAT& The element
  */
-template <typename INT, typename FLOAT>
-const FLOAT &denseM<INT, FLOAT>::operator[](INT index) const
+template <typename FLOAT>
+const FLOAT &denseM<FLOAT>::operator[](uint64_t index) const
 {
-    if (index >= cols_ * rows_ || index < 0)
+    if (index >= cols_ * rows_)
     {
-        throw invalid_size();
+        throw index_overflow();
     }
     return matrix_[index];
+}
+
+template <typename FLOAT>
+void denseM<FLOAT>::output(const string &filename) const
+{
+    ofstream out(filename);
+    if (!out.is_open())
+    {
+        cout << "There is a problem when opening the file " << filename;
+        exit(EXIT_FAILURE);
+    }
+
+    // Find the extension of the filename
+    size_t dot_pos = filename.find_last_of(".");
+    string extension = filename.substr(dot_pos);
+    for (uint64_t i = 0; i < rows_; i++)
+    {
+        for (uint64_t j = 0; j < cols_; j++)
+        {
+            // If this is an excel file, use comma to separate numbers
+            if (extension == ".csv")
+            {
+                out << matrix_[i * cols_ + j];
+                if (j + 1 != cols_)
+                {
+                    out << ",";
+                }
+            }
+            else
+            {
+                out << matrix_[i * cols_ + j] << " ";
+            }
+        }
+        out << "\n";
+    }
+
+    out.close();
 }
 
 /**
  * @brief Overloaded binary operator << to print the matrix
  * stored in denseM object. Each element separated by white space
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param out An ostream object
  * @param M A denseM object
  * @return ostream& Returns a reference to an ostream object.
  */
-template <typename INT, typename FLOAT>
-ostream &operator<<(ostream &out, const denseM<INT, FLOAT> &M)
+template <typename FLOAT>
+ostream &operator<<(ostream &out, const denseM<FLOAT> &M)
 {
     vector<FLOAT> temp = M.get_data();
     for (uint64_t i = 0; i < temp.size(); i++)
@@ -363,14 +496,13 @@ ostream &operator<<(ostream &out, const denseM<INT, FLOAT> &M)
  * @brief Overloaded binary operator + to calculate the summation of the
  * first denseM object and the second denseM object
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param M1 First dense matrix
  * @param M2 Second dense matrix
- * @return denseM<INT, FLOAT> A dense matrix as the result of addition.
+ * @return denseM<FLOAT> A dense matrix as the result of addition.
  */
-template <typename INT, typename FLOAT>
-denseM<INT, FLOAT> operator+(const denseM<INT, FLOAT> &M1, const denseM<INT, FLOAT> &M2)
+template <typename FLOAT>
+denseM<FLOAT> operator+(const denseM<FLOAT> &M1, const denseM<FLOAT> &M2)
 {
     // Exception occurs when given matrices have different size
     if (M1.get_num_cols() != M2.get_num_cols() || M1.get_num_rows() != M2.get_num_rows())
@@ -378,12 +510,12 @@ denseM<INT, FLOAT> operator+(const denseM<INT, FLOAT> &M1, const denseM<INT, FLO
         throw invalid_argument("These two matrices are not able to add each other.");
     }
 
-    INT Row = M1.get_num_rows();
-    INT Col = M1.get_num_cols();
-    denseM<INT, FLOAT> sum(Row, Col);
+    uint64_t Row = M1.get_num_rows();
+    uint64_t Col = M1.get_num_cols();
+    denseM<FLOAT> sum(Row, Col);
 
     // elements are adding each other correspondingly
-    for (INT i = 0; i < Row * Col; i++)
+    for (uint64_t i = 0; i < Row * Col; i++)
     {
         sum[i] += M1[i] + M2[i];
     }
@@ -394,14 +526,13 @@ denseM<INT, FLOAT> operator+(const denseM<INT, FLOAT> &M1, const denseM<INT, FLO
  * @brief Overloaded binary operator - to calculate the subtraction of the
  * first denseM object and the second denseM object
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param M1 First dense matrix
  * @param M2 Second dense matrix
- * @return denseM<INT, FLOAT> A dense matrix as the result of subtraction.
+ * @return denseM<FLOAT> A dense matrix as the result of subtraction.
  */
-template <typename INT, typename FLOAT>
-denseM<INT, FLOAT> operator-(const denseM<INT, FLOAT> &M1, const denseM<INT, FLOAT> &M2)
+template <typename FLOAT>
+denseM<FLOAT> operator-(const denseM<FLOAT> &M1, const denseM<FLOAT> &M2)
 {
     // Exception occurs when given matrices have different size
     if (M1.get_num_cols() != M2.get_num_cols() || M1.get_num_rows() != M2.get_num_rows())
@@ -409,13 +540,13 @@ denseM<INT, FLOAT> operator-(const denseM<INT, FLOAT> &M1, const denseM<INT, FLO
         throw invalid_argument("These two matrices are not able to subtract each other.");
     }
 
-    INT Row = M1.get_num_rows();
-    INT Col = M1.get_num_cols();
+    uint64_t Row = M1.get_num_rows();
+    uint64_t Col = M1.get_num_cols();
 
-    denseM<INT, FLOAT> sub(Row, Col);
+    denseM<FLOAT> sub(Row, Col);
 
     // elements are subtracting each other correspondingly
-    for (INT i = 0; i < Row * Col; i++)
+    for (uint64_t i = 0; i < Row * Col; i++)
     {
         sub[i] += M1[i] - M2[i];
     }
@@ -427,14 +558,13 @@ denseM<INT, FLOAT> operator-(const denseM<INT, FLOAT> &M1, const denseM<INT, FLO
  * @brief Overloaded binary operator * to calculate the multiplication of the
  * first denseM object and the second denseM object
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param M1 First dense matrix
  * @param M2 Second dense matrix
- * @return denseM<INT, FLOAT> A dense matrix as the result of multiplication.
+ * @return denseM<FLOAT> A dense matrix as the result of multiplication.
  */
-template <typename INT, typename FLOAT>
-denseM<INT, FLOAT> operator*(const denseM<INT, FLOAT> &M1, const denseM<INT, FLOAT> &M2)
+template <typename FLOAT>
+denseM<FLOAT> operator*(const denseM<FLOAT> &M1, const denseM<FLOAT> &M2)
 {
     // Exception occurs when given matrices are not able to multiply each other
     if (M1.get_num_cols() != M2.get_num_rows())
@@ -442,19 +572,19 @@ denseM<INT, FLOAT> operator*(const denseM<INT, FLOAT> &M1, const denseM<INT, FLO
         throw invalid_argument("These two matrices are not able to multiply each other.");
     }
 
-    INT row1 = M1.get_num_rows();
-    INT row2 = M2.get_num_rows();
-    INT col1 = M1.get_num_cols();
-    INT col2 = M2.get_num_cols();
+    uint64_t row1 = M1.get_num_rows();
+    uint64_t row2 = M2.get_num_rows();
+    uint64_t col1 = M1.get_num_cols();
+    uint64_t col2 = M2.get_num_cols();
 
     // size of the multiplication result is rows of matrix1 with cols of matrix2
-    denseM<INT, FLOAT> result(row1, col2);
+    denseM<FLOAT> result(row1, col2);
 
-    for (INT i = 0; i < row1; i++)
+    for (uint64_t i = 0; i < row1; i++)
     {
-        for (INT j = 0; j < col2; j++)
+        for (uint64_t j = 0; j < col2; j++)
         {
-            for (INT k = 0; k < row2; k++)
+            for (uint64_t k = 0; k < row2; k++)
             {
                 result[col2 * i + j] += M1[col1 * i + k] * M2[col2 * k + j];
             }
@@ -467,23 +597,22 @@ denseM<INT, FLOAT> operator*(const denseM<INT, FLOAT> &M1, const denseM<INT, FLO
 /**
  * @brief infinity norm of a denseM. Finding the largest row sum of the matrix.
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param M Dense matrix
  * @return FLOAT The infinity norm of M
  */
-template <typename INT, typename FLOAT>
-FLOAT norm(const denseM<INT, FLOAT> &M)
+template <typename FLOAT>
+FLOAT norm(const denseM<FLOAT> &M)
 {
-    INT Row = M.get_num_rows();
-    INT Col = M.get_num_cols();
+    uint64_t Row = M.get_num_rows();
+    uint64_t Col = M.get_num_cols();
     FLOAT maxRowSum = 0.0;
 
     // find the max row sum
-    for (INT i = 0; i < Row; i++)
+    for (uint64_t i = 0; i < Row; i++)
     {
         FLOAT RowSum = 0.0;
-        for (INT j = 0; j < Col; j++)
+        for (uint64_t j = 0; j < Col; j++)
         {
             RowSum += fabs(M[i * Col + j]);
         }
@@ -498,15 +627,14 @@ FLOAT norm(const denseM<INT, FLOAT> &M)
  * combination of L and U for saving memory, and modify the integer vector P to record row
  * swapping in permutation matrix
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param A Dense matrix, it will be modified to the combination of L and U
  * @param P A integer vector P = {0,1,2,...,n-1} for nxn matrix A
  * @return INT exit-flag of LU-decomposition
  * (return 0 means success, return >0 means completed but U is singular)
  */
-template <typename INT, typename FLOAT>
-INT LU_withPivot(denseM<INT, FLOAT> &A, vector<INT> &P)
+template <typename FLOAT>
+uint64_t LU_withPivot(denseM<FLOAT> &A, vector<uint64_t> &P)
 {
     // Since we want to solve linear system, only consider LU decomposition in square matrices
     // Exception occurs when given matrix is not a square matrix
@@ -515,18 +643,17 @@ INT LU_withPivot(denseM<INT, FLOAT> &A, vector<INT> &P)
         throw invalid_argument("This matrix is not a square matrix.");
     }
 
-    INT size = A.get_num_rows();
+    uint64_t size = A.get_num_rows();
 
     sort(P.begin(), P.end());
 
-    for (INT i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
     {
-        INT current_pivot = i;
-        // INT max = 0;
+        uint64_t current_pivot = i;
 
         // compare the pivot in the current row with the number in
         // the following rows
-        for (INT j = i + 1; j < size; j++)
+        for (uint64_t j = i + 1; j < size; j++)
         {
             // find the biggest absolute value for each column, choose it
             // as the new current pivot
@@ -537,15 +664,11 @@ INT LU_withPivot(denseM<INT, FLOAT> &A, vector<INT> &P)
                 // max = fabs(A[j * size + i]);
             }
         }
-        /*
-        if (max == 0){
-            throw invalid_argument("There is a column only contains 0, cannot compute LU")
-        }*/
 
         // If pivot changed, swap rows
         if (current_pivot != i)
         {
-            for (INT n = 0; n < size; n++)
+            for (uint64_t n = 0; n < size; n++)
             {
                 FLOAT temp = A[current_pivot * size + n];
                 A[current_pivot * size + n] = A[i * size + n];
@@ -555,14 +678,14 @@ INT LU_withPivot(denseM<INT, FLOAT> &A, vector<INT> &P)
         }
 
         // By Gaussian elimination, A will be modified to the combination of L and U
-        for (INT j = i + 1; j < size; j++)
+        for (uint64_t j = i + 1; j < size; j++)
         {
             // Preventing division by 0
             if (A[i * size + i] != 0)
             {
                 A[j * size + i] /= A[i * size + i];
             }
-            for (INT k = i + 1; k < size; k++)
+            for (uint64_t k = i + 1; k < size; k++)
             {
                 A[j * size + k] -= A[i * size + k] * A[j * size + i];
             }
@@ -570,8 +693,8 @@ INT LU_withPivot(denseM<INT, FLOAT> &A, vector<INT> &P)
     }
 
     // Count 0s on diagonal, if there is, means U is singular
-    INT count = size;
-    for (INT i = 0; i < size; i++)
+    uint64_t count = size;
+    for (uint64_t i = 0; i < size; i++)
     {
         if (A[i * size + i] == 0)
         {
@@ -594,19 +717,69 @@ INT LU_withPivot(denseM<INT, FLOAT> &A, vector<INT> &P)
     return 0;
 }
 
+template <typename FLOAT>
+denseM<FLOAT> Lower_triangular(const denseM<FLOAT> &A)
+{
+    uint64_t size = A.get_num_cols();
+
+    // Separate lower-triangular matrix out
+    // Create an identity matrix since lower-triangular matrix has diagonal with 1s
+    denseM<FLOAT> lower(size, size);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        lower[size * i + i] = 1;
+    }
+
+    for (uint64_t i = 0; i < size; i++)
+    {
+
+        for (uint64_t j = 0; j < size; j++)
+        {
+            if (j < i)
+            {
+                lower[i * size + j] = A[i * size + j];
+            }
+        }
+    }
+    return lower;
+}
+
+template <typename FLOAT>
+denseM<FLOAT> Upper_triangular(const denseM<FLOAT> &A)
+{
+
+    uint64_t size = A.get_num_cols();
+
+    // Separate upper-triangular matrix out
+    // The upper part of A is just the upper-triangular matrix U
+    denseM<FLOAT> upper(size, size);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        for (uint64_t zero = 0; zero < i; zero++)
+        {
+            upper.push_back(0);
+        }
+        for (uint64_t j = i; j < size; j++)
+        {
+            upper.push_back(A[i * size + j]);
+        }
+    }
+
+    return upper;
+}
+
 /**
  * @brief Use the updated A and P from LU_withPivot(A,P), solve linear system LUx = Pb
  * by forward and backward substitution
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param A nxn dense matrix
  * @param b nx1 dense matrix
  * @param P A integer vector P = {0,1,2,...,n-1} for nxn matrix A
- * @return denseM<INT, FLOAT> nx1 dense matrix, it is the solution of the linear system
+ * @return denseM<FLOAT> nx1 dense matrix, it is the solution of the linear system
  */
-template <typename INT, typename FLOAT>
-denseM<INT, FLOAT> LU_solver(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b, vector<INT> &P)
+template <typename FLOAT>
+denseM<FLOAT> LU_solver(denseM<FLOAT> &A, const denseM<FLOAT> &b, vector<uint64_t> &P)
 {
     if (A.get_num_rows() != b.get_num_rows())
     {
@@ -616,30 +789,30 @@ denseM<INT, FLOAT> LU_solver(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b,
     // Receive updated A and P
     // A contains L and U key parameters
     // P contains the row swapping information
-    INT exit_flag = LU_withPivot(A, P);
+    uint64_t exit_flag = LU_withPivot(A, P);
     if (exit_flag != 0)
     {
         throw invalid_argument("This matrix cannot solve by LU");
     }
 
-    INT size = A.get_num_cols();
+    uint64_t size = A.get_num_cols();
 
     // Starts with LUx = Pb
     // Calculate Pb
-    denseM<INT, FLOAT> Pb(size, 1);
-    for (INT i = 0; i < size; i++)
+    denseM<FLOAT> Pb(size, 1);
+    for (uint64_t i = 0; i < size; i++)
     {
         Pb[i] = b[(P[i])];
     }
 
     // Let y = Ux, then Ly = Pb, solve y by forward substituion
-    denseM<INT, FLOAT> y(size, 1);
-    for (INT i = 0; i < size; i++)
+    denseM<FLOAT> y(size, 1);
+    for (uint64_t i = 0; i < size; i++)
     {
         FLOAT temp = 0;
         // temp will store the summation of all known xi value times corresponding
         // L value in each row
-        for (INT j = 0; j <= i; j++)
+        for (uint64_t j = 0; j <= i; j++)
         {
             // The number on the diagonal should be 1
             if (j == i)
@@ -659,13 +832,13 @@ denseM<INT, FLOAT> LU_solver(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b,
     }
 
     // Solve x from Ux = y by backward substituion
-    denseM<INT, FLOAT> x(size, 1);
-    for (INT i = size; i >= 1; i--)
+    denseM<FLOAT> x(size, 1);
+    for (uint64_t i = size; i >= 1; i--)
     {
         FLOAT temp = 0;
         // temp will store the summation of all known xi value times corresponding
         // U value in each row
-        for (INT j = i - 1; j < size; j++)
+        for (uint64_t j = i - 1; j < size; j++)
         {
             temp += x[j] * A[(i - 1) * size + j];
         }
@@ -677,40 +850,27 @@ denseM<INT, FLOAT> LU_solver(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b,
 }
 
 /**
- * @brief LU-decomposition with partial pivoting, it will change the denseM object A to the
- * combination of L and U for saving memory, and modify the integer vector P to record row
- * swapping in permutation matrix
- *
-
- * @param A Dense matrix, it will be modified to the combination of L and U
-
- * @return INT exit-flag of LU-decomposition
- * (return 0 means success, return >0 means completed but U is singular)
- */
-
-/**
  * @brief Cholesky decomposition will decompose a positive definite matrix A into a
  * lower-triangular matrix L and its conjugate transpose L_T, such that L*L_T = A
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param A Dense matrix, it will not be modified
- * @return denseM<INT, FLOAT> A_chole, contains the combination of L and L_T
+ * @return denseM<FLOAT> A_chole, contains the combination of L and L_T
  */
-template <typename INT, typename FLOAT>
-denseM<INT, FLOAT> cholesky(const denseM<INT, FLOAT> &A)
+template <typename FLOAT>
+denseM<FLOAT> cholesky(const denseM<FLOAT> &A)
 {
-    INT size = A.get_num_cols();
-    denseM<INT, FLOAT> A_chole(size, size);
+    uint64_t size = A.get_num_cols();
+    denseM<FLOAT> A_chole(size, size);
 
     // Modified from
     // https://en.wikipedia.org/wiki/Cholesky_decomposition#The_Cholesky_algorithm
-    for (INT i = 0; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
     {
-        for (INT j = 0; j < (i + 1); j++)
+        for (uint64_t j = 0; j < (i + 1); j++)
         {
             FLOAT sum = 0;
-            for (INT k = 0; k < j; k++)
+            for (uint64_t k = 0; k < j; k++)
             {
                 sum += A_chole[i * size + k] * A_chole[j * size + k];
             }
@@ -737,14 +897,13 @@ denseM<INT, FLOAT> cholesky(const denseM<INT, FLOAT> &A)
  * @brief Get the combination matrix A_chole of L and L_T from cholesky(A,P),
  * solve linear system LL_Tx=b by forward and backward substitution
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FLOAT Any floating-point number precision
  * @param A nxn dense matrix
  * @param b nx1 dense matrix
- * @return denseM<INT, FLOAT> nx1 dense matrix, it is the solution of the linear system
+ * @return denseM<FLOAT> nx1 dense matrix, it is the solution of the linear system
  */
-template <typename INT, typename FLOAT>
-denseM<INT, FLOAT> cholesky_solver(const denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b)
+template <typename FLOAT>
+denseM<FLOAT> cholesky_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
 {
     if (A.get_num_rows() != b.get_num_rows())
     {
@@ -753,19 +912,19 @@ denseM<INT, FLOAT> cholesky_solver(const denseM<INT, FLOAT> &A, const denseM<INT
 
     // Get A_chole (which contains both the lower triangular L and upper
     // triangular L's conjugate transpose L_T) from cholesky decomposition
-    denseM<INT, FLOAT> A_chole = cholesky(A);
+    denseM<FLOAT> A_chole = cholesky(A);
 
-    INT size = A.get_num_cols();
+    uint64_t size = A.get_num_cols();
 
     // Start with L(L_T)x = b;
     // Let y = (L_T)x, then Ly = b, solve y by forward substituion
-    denseM<INT, FLOAT> y(size, 1);
-    for (INT i = 0; i < size; i++)
+    denseM<FLOAT> y(size, 1);
+    for (uint64_t i = 0; i < size; i++)
     {
         FLOAT temp = 0;
         // temp will store the summation of all known xi value times corresponding
         // L value in each row
-        for (INT j = 0; j <= i; j++)
+        for (uint64_t j = 0; j <= i; j++)
         {
 
             temp += y[j] * A_chole[i * size + j];
@@ -776,13 +935,13 @@ denseM<INT, FLOAT> cholesky_solver(const denseM<INT, FLOAT> &A, const denseM<INT
     }
 
     // Solve x from (L_T)x = y by backward substituion
-    denseM<INT, FLOAT> x(size, 1);
-    for (INT i = size; i >= 1; i--)
+    denseM<FLOAT> x(size, 1);
+    for (uint64_t i = size; i >= 1; i--)
     {
         FLOAT temp = 0;
         // temp will store the summation of all known xi value times corresponding
         // U value in each row
-        for (INT j = i - 1; j < size; j++)
+        for (uint64_t j = i - 1; j < size; j++)
         {
             temp += x[j] * A_chole[(i - 1) * size + j];
         }
@@ -799,7 +958,6 @@ denseM<INT, FLOAT> cholesky_solver(const denseM<INT, FLOAT> &A, const denseM<INT
  * by low-accuracy precision, and getting a more precise residual for updating the
  * solution in each iteration by using a high-accuracy precision
  *
- * @tparam INT Any integer precision (unsigned or signed are both available)
  * @tparam FACT floating-point number precision used for LU-factorization
  * (need to be a low-accurate precision)
  * @tparam FLOAT Any floating-point number precision
@@ -808,40 +966,40 @@ denseM<INT, FLOAT> cholesky_solver(const denseM<INT, FLOAT> &A, const denseM<INT
  * (need to be a accurate precision)
  * @param A nxn dense matrix in precision FLOAT
  * @param b nx1 dense matrix in precision FLOAT
- * @return denseM<INT, FLOAT> nx1 dense matrix, it is the solution of the linear system
+ * @return denseM<FLOAT> nx1 dense matrix, it is the solution of the linear system
  * solved by iterative refinement
  */
-template <typename INT, typename FACT, typename FLOAT, typename RES>
-denseM<INT, FLOAT> IR(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b)
+template <typename FACT, typename FLOAT, typename RES>
+denseM<FLOAT> IR(denseM<FLOAT> &A, const denseM<FLOAT> &b)
 {
-    INT size = A.get_num_cols();
+    uint64_t size = A.get_num_cols();
 
     // change to FACT precision for factorization
-    denseM<INT, FACT> Af(A);
-    denseM<INT, FACT> bf(b);
+    denseM<FACT> Af(A);
+    denseM<FACT> bf(b);
 
     // Creating original permutation matrix in vector form
     // P = {0,1,2,...,n-1} for nxn matrix A
-    vector<INT> P(size);
-    for (INT i = 0; i < size; i++)
+    vector<uint64_t> P(size);
+    for (uint64_t i = 0; i < size; i++)
     {
         P[i] = i;
     }
 
     // max iteration
-    INT max_iter = 10000;
+    uint64_t max_iter = 10000;
     // iteration counter
-    INT iter = 0;
+    uint64_t iter = 0;
 
     // residual
-    denseM<INT, RES> r(size, size);
+    denseM<RES> r(size, size);
     // infinity norm of r
     RES residual = 1;
     // tolerance for stopping iteration
     FLOAT tol = 1e-16;
     FLOAT tol2 = 1e-14;
     // correction
-    denseM<INT, FLOAT> c(size, 1);
+    denseM<FLOAT> c(size, 1);
 
     cout << "Starting iterative refinement: "
          << "\n";
@@ -851,15 +1009,15 @@ denseM<INT, FLOAT> IR(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b)
     // If A is a positive definite matrix, use Cholesky-decomposition
     if (A.get_is_pos_def() == 1)
     {
-        denseM<INT, FLOAT> x = cholesky_solver(Af, bf);
+        denseM<FLOAT> x = cholesky_solver(Af, bf);
         while (iter != max_iter && residual > tol2 && residual != 0)
         {
             // residual must be in RES precision
-            r = b - (A * denseM<INT, RES>(x));
-            residual = norm<INT, RES>(r);
+            r = b - (A * denseM<RES>(x));
+            residual = norm<RES>(r);
 
             // Using Cholesky again in FACT precision to get correction
-            c = cholesky_solver(Af, denseM<INT, FACT>(r));
+            c = cholesky_solver(Af, denseM<FACT>(r));
             x = x + c;
             iter++;
         }
@@ -878,17 +1036,17 @@ denseM<INT, FLOAT> IR(denseM<INT, FLOAT> &A, const denseM<INT, FLOAT> &b)
     // Calculate x0 for starting the iteration
     // L,U in Af must be in FACT precision
     // LU_solver returns x in FACT precision
-    denseM<INT, FLOAT> x = LU_solver(Af, bf, P);
-    Af = denseM<INT, FACT>(A);
+    denseM<FLOAT> x = LU_solver(Af, bf, P);
+    Af = denseM<FACT>(A);
     while (iter != max_iter && residual > tol && residual != 0)
     {
         // residual must be in RES precision
-        r = b - (A * denseM<INT, RES>(x));
-        residual = norm<INT, RES>(r);
+        r = b - (A * denseM<RES>(x));
+        residual = norm<RES>(r);
 
         // Using LU again in FACT precision to get correction
-        c = LU_solver(Af, denseM<INT, FACT>(r), P);
-        Af = denseM<INT, FACT>(A);
+        c = LU_solver(Af, denseM<FACT>(r), P);
+        Af = denseM<FACT>(A);
         x = x + c;
         iter++;
     }
