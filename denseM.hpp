@@ -145,6 +145,12 @@ public:
     const FLOAT &operator[](uint64_t) const;
 
     /**
+     * @brief Resize a denseM object by given the new size
+     *
+     */
+    void resize(const uint64_t &, const uint64_t &);
+
+    /**
      * @brief Output denseM object into a file
      *
      */
@@ -431,6 +437,52 @@ const FLOAT &denseM<FLOAT>::operator[](uint64_t index) const
     return matrix_[index];
 }
 
+/**
+ * @brief Resize a denseM object by given the new size
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param new_row New size of row
+ * @param new_col New size of col
+ */
+
+template <typename FLOAT>
+void denseM<FLOAT>::resize(const uint64_t &new_row, const uint64_t &new_col)
+{
+    uint64_t Rows = this->rows_;
+    uint64_t Cols = this->cols_;
+    vector<FLOAT> newM(new_row * new_col);
+    // Temporary Rows and cols for iteration and rearrange numbers
+    uint64_t temp_rows = Rows;
+    uint64_t temp_cols = Cols;
+
+    // Take the shorter row/col for iteration
+    // Hence if the matrix is shrinking (Rows >= new_row or Cols >= new_col), it will
+    // only store part of the original matrix M
+    // If the matrix is expanding (Rows < new_row or Cols < new_col), the position outside
+    // the original matrix will stay as 0
+    if (Rows >= new_row)
+    {
+        temp_rows = new_row;
+    }
+
+    if (Cols >= new_col)
+    {
+        temp_cols = new_col;
+    }
+
+    for (uint64_t i = 0; i < temp_rows; i++)
+    {
+        for (uint64_t j = 0; j < temp_cols; j++)
+        {
+            newM[i * new_col + j] = this->matrix_[i * Cols + j];
+        }
+    }
+    // Reassign all the variables
+    this->rows_ = new_row;
+    this->cols_ = new_col;
+    this->matrix_ = newM;
+}
+
 template <typename FLOAT>
 void denseM<FLOAT>::output(const string &filename) const
 {
@@ -490,6 +542,40 @@ ostream &operator<<(ostream &out, const denseM<FLOAT> &M)
         }
     }
     return out;
+}
+
+/**
+ * @brief Find the transpose of a dense matrix
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param M A dense matrix
+ * @return denseM<FLOAT> The transpose of M
+ */
+template <typename FLOAT>
+denseM<FLOAT> transpose(const denseM<FLOAT> &M)
+{
+    uint64_t new_row = M.get_num_cols();
+    uint64_t new_col = M.get_num_rows();
+    denseM<FLOAT> new_M(new_row, new_col);
+
+    for (uint64_t i = 0; i < new_row; i++)
+    {
+        for (uint64_t j = 0; j < new_col; j++)
+        {
+            // At M[i,j] where i != j, the transpose of M, MT needs to move the number from
+            // position M[i,j] to MT[j,i]
+            if (i != j)
+            {
+                new_M[i * new_col + j] = M[j * new_row + i];
+            }
+            // At M[i,i], the numbers are keeping at the same position
+            else
+            {
+                new_M[i * new_col + j] = M[i * new_row + j];
+            }
+        }
+    }
+    return new_M;
 }
 
 /**
@@ -595,6 +681,92 @@ denseM<FLOAT> operator*(const denseM<FLOAT> &M1, const denseM<FLOAT> &M2)
 }
 
 /**
+ * @brief Overloaded binary operator * to calculate the multiplication of a scalar
+ * and a denseM object
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param scalar A floating-point number
+ * @param M A dense matrix
+ * @return denseM<FLOAT> A dense matrix as the result of multiplication.
+ */
+template <typename FLOAT>
+denseM<FLOAT> operator*(const FLOAT &scalar, const denseM<FLOAT> &M)
+{
+    uint64_t row = M.get_num_rows();
+    uint64_t col = M.get_num_cols();
+    uint64_t size = row * col;
+
+    denseM<FLOAT> result(row, col);
+    for (uint64_t i; i < size; i++)
+    {
+        result[i] = M[i] * scalar;
+    }
+    return result;
+}
+
+/**
+ * @brief Overloaded binary operator * to calculate the multiplication of a scalar
+ * and a denseM object
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param M A dense matrix
+ * @param scalar A floating-point number
+ * @return denseM<FLOAT> A dense matrix as the result of multiplication.
+ */
+template <typename FLOAT>
+denseM<FLOAT> operator*(const denseM<FLOAT> &M, const FLOAT &scalar)
+{
+    return scalar * M;
+}
+
+template <typename FLOAT>
+denseM<FLOAT> scalar_div(const denseM<FLOAT> &M, const FLOAT &num)
+{
+    if (M.get_num_cols() != 1)
+    {
+        cout << "We only want to divide a nx1 matrix(or vector) by scalar"
+             << "\n";
+        exit(EXIT_FAILURE);
+    }
+    uint64_t size = M.get_num_rows();
+    denseM<FLOAT> result(size, 1);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        result[i] = M[i] / num;
+    }
+
+    return result;
+}
+
+/**
+ * @brief Find the 2-norm of a nx1 matrix
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param M A nx1 matrix
+ * @return FLOAT The norm
+ */
+template <typename FLOAT>
+FLOAT norm(const denseM<FLOAT> &M)
+{
+    if (M.get_num_cols() != 1)
+    {
+        cout << "2-norm only works for a nx1 matrix(or vector)"
+             << "\n";
+        exit(EXIT_FAILURE);
+    }
+    uint64_t size = M.get_num_rows();
+    FLOAT sum = 0.0;
+
+    for (uint64_t i = 0; i < size; i++)
+    {
+        sum += pow(fabs(M[i]), 2);
+    }
+
+    sum = pow(sum, 0.5);
+    return sum;
+}
+
+/**
  * @brief infinity norm of a denseM. Finding the largest row sum of the matrix.
  *
  * @tparam FLOAT Any floating-point number precision
@@ -602,7 +774,7 @@ denseM<FLOAT> operator*(const denseM<FLOAT> &M1, const denseM<FLOAT> &M2)
  * @return FLOAT The infinity norm of M
  */
 template <typename FLOAT>
-FLOAT norm(const denseM<FLOAT> &M)
+FLOAT norm_inf(const denseM<FLOAT> &M)
 {
     uint64_t Row = M.get_num_rows();
     uint64_t Col = M.get_num_cols();
@@ -640,7 +812,7 @@ uint64_t LU_withPivot(denseM<FLOAT> &A, vector<uint64_t> &P)
     // Exception occurs when given matrix is not a square matrix
     if (A.get_num_cols() != A.get_num_rows())
     {
-        throw invalid_argument("This matrix is not a square matrix.");
+        throw invalid_argument("This matrix is not a square matrix. Cannot factorize to LU");
     }
 
     uint64_t size = A.get_num_rows();
@@ -660,8 +832,6 @@ uint64_t LU_withPivot(denseM<FLOAT> &A, vector<uint64_t> &P)
             if (fabs(A[j * size + i]) > fabs(A[current_pivot * size + i]))
             {
                 current_pivot = j;
-
-                // max = fabs(A[j * size + i]);
             }
         }
 
@@ -992,7 +1162,7 @@ denseM<FLOAT> IR(denseM<FLOAT> &A, const denseM<FLOAT> &b)
     uint64_t iter = 0;
 
     // residual
-    denseM<RES> r(size, size);
+    denseM<RES> r(size, 1);
     // infinity norm of r
     RES residual = 1;
     // tolerance for stopping iteration
@@ -1014,7 +1184,7 @@ denseM<FLOAT> IR(denseM<FLOAT> &A, const denseM<FLOAT> &b)
         {
             // residual must be in RES precision
             r = b - (A * denseM<RES>(x));
-            residual = norm<RES>(r);
+            residual = norm_inf<RES>(r);
 
             // Using Cholesky again in FACT precision to get correction
             c = cholesky_solver(Af, denseM<FACT>(r));
@@ -1042,7 +1212,7 @@ denseM<FLOAT> IR(denseM<FLOAT> &A, const denseM<FLOAT> &b)
     {
         // residual must be in RES precision
         r = b - (A * denseM<RES>(x));
-        residual = norm<RES>(r);
+        residual = norm_inf<RES>(r);
 
         // Using LU again in FACT precision to get correction
         c = LU_solver(Af, denseM<FACT>(r), P);
@@ -1059,4 +1229,54 @@ denseM<FLOAT> IR(denseM<FLOAT> &A, const denseM<FLOAT> &b)
          << "\n"
          << "x = ";
     return x;
+}
+
+template <typename FLOAT>
+denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b)
+{
+    uint64_t size = A.get_num_cols();
+    denseM<FLOAT> A_holder = A;
+    // Creating original permutation matrix in vector form
+    // P = {0,1,2,...,n-1} for nxn matrix A
+    vector<uint64_t> P(size);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        P[i] = i;
+    }
+    // Initial x
+    denseM<FLOAT> x0 = LU_solver(A, b, P);
+
+    // Initial residual
+    denseM<FLOAT> r0 = b - (A_holder * x0);
+
+    // Use Arnoldi iteration to find the orthonormal vector q1,q2,...,qn for Krylov subspace
+    // First column of Qn: q1, uses in Arnoldi iteration
+    denseM<FLOAT> q = scalar_div(r0, norm(r0));
+    // Initialize Qn
+    denseM<FLOAT> Q(1, 1);
+    // initialize Hessenberg matrix
+    denseM<FLOAT> H(1, 1);
+
+    uint64_t max_iter = 1000;
+    // Initialize residual
+    FLOAT residual = 1;
+    // tolerance for stopping iteration
+    FLOAT tol = 1e-16;
+
+    // iteration tracker
+    uint64_t k = 1;
+    while (residual > tol && k <= max_iter)
+    {
+        H.resize(k + 1, k);
+        // Krylov vector
+        denseM<FLOAT> v = A_holder * q;
+        for (uint64_t n = 1; n <= k; n++)
+        {
+            // transpose of q multiply v will get a 1x1 matrix, assign the value to H(n,k)
+            H[(n - 1) * k + (k - 1)] = (transpose(q) * v)[0];
+            // update v
+            v = v - H[(n - 1) * k + (k - 1)] * q;
+        }
+    }
+    return 0;
 }
