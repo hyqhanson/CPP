@@ -1252,12 +1252,13 @@ denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b)
     // Use Arnoldi iteration to find the orthonormal vector q1,q2,...,qn for Krylov subspace
     // First column of Qn: q1, uses in Arnoldi iteration
     denseM<FLOAT> q = scalar_div(r0, norm(r0));
-    // Initialize Qn
-    denseM<FLOAT> Q(1, 1);
+    // Initialize Qn with its first column
+    // It is the orthonormal basis for the Krylov subspace
+    denseM<FLOAT> Q = q;
     // initialize Hessenberg matrix
     denseM<FLOAT> H(1, 1);
 
-    uint64_t max_iter = 1000;
+    uint64_t max_iter = 5;
     // Initialize residual
     FLOAT residual = 1;
     // tolerance for stopping iteration
@@ -1267,8 +1268,10 @@ denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b)
     uint64_t k = 1;
     while (residual > tol && k <= max_iter)
     {
+        // Arnoldi iteration starts
+        // Expand H
         H.resize(k + 1, k);
-        // Krylov vector
+        // current Krylov vector
         denseM<FLOAT> v = A_holder * q;
         for (uint64_t n = 1; n <= k; n++)
         {
@@ -1277,6 +1280,26 @@ denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b)
             // update v
             v = v - H[(n - 1) * k + (k - 1)] * q;
         }
+        H[(k + 1 - 1) * k + (k - 1)] = norm(v);
+
+        // next column of Qn
+        q = scalar_div(v, H[(k + 1 - 1) * k + (k - 1)]);
+
+        // Expand Qn
+        Q.resize(Q.get_num_rows(), k + 1);
+
+        // Add qk+1 into the k+1th column of Qn
+        for (uint64_t i = 0; i < Q.get_num_rows(); i++)
+        {
+            Q[i * k + k] = q[i];
+        }
+
+        // Arnoldi iterations stops here, it computed new entries for H and Qn
+
+        k++;
     }
+    cout << "H is: "
+         << "\n"
+         << H << "\n";
     return 0;
 }
