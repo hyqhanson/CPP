@@ -719,6 +719,14 @@ denseM<FLOAT> operator*(const denseM<FLOAT> &M, const FLOAT &scalar)
     return scalar * M;
 }
 
+/**
+ * @brief Divide a matrix by a floating point number
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param M A denseM object
+ * @param num A floating point number
+ * @return denseM<FLOAT> A denseM object
+ */
 template <typename FLOAT>
 denseM<FLOAT> scalar_div(const denseM<FLOAT> &M, const FLOAT &num)
 {
@@ -1232,7 +1240,7 @@ denseM<FLOAT> IR(denseM<FLOAT> &A, const denseM<FLOAT> &b)
 }
 
 template <typename FLOAT>
-denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b)
+denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM<FLOAT> init_guess)
 {
     uint64_t size = A.get_num_cols();
     denseM<FLOAT> A_holder = A;
@@ -1244,10 +1252,11 @@ denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b)
         P[i] = i;
     }
     // Initial x
-    denseM<FLOAT> x0 = LU_solver(A, b, P);
+    // denseM<FLOAT> x0 = LU_solver(A, b, P);
 
     // Initial residual
-    denseM<FLOAT> r0 = b - (A_holder * x0);
+    denseM<FLOAT> r0 = b - (A_holder * init_guess);
+    cout << r0 << "\n";
 
     // Use Arnoldi iteration to find the orthonormal vector q1,q2,...,qn for Krylov subspace
     // First column of Qn: q1, uses in Arnoldi iteration
@@ -1255,51 +1264,125 @@ denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b)
     // Initialize Qn with its first column
     // It is the orthonormal basis for the Krylov subspace
     denseM<FLOAT> Q = q;
+
     // initialize Hessenberg matrix
     denseM<FLOAT> H(1, 1);
+    denseM<FLOAT> H_temp(1, 1);
+    // From QR decomposition of H
+    denseM<FLOAT> Rn(1, 1);
+    // initialize given rotation matrix
+    denseM<FLOAT> G(1, 1);
+    // Use for pre-multiplying the Hessenberg matrix to make it be upper triangular
+    denseM<FLOAT> Omega(1);
 
     uint64_t max_iter = 5;
     // Initialize residual
     FLOAT residual = 1;
     // tolerance for stopping iteration
-    FLOAT tol = 1e-16;
+    FLOAT tol = 1e-6;
 
+    // denseM<FLOAT> e1(1, 1);
+    denseM<FLOAT> e1(max_iter + 1, 1);
+    e1[0] = 1;
+    denseM<FLOAT> beta_O_e1 = norm(r0) * e1;
+
+    denseM<FLOAT> x(1, 1);
     // iteration tracker
-    uint64_t k = 1;
-    while (residual > tol && k <= max_iter)
+    uint64_t n = 1;
+    while (residual > tol && n <= max_iter)
     {
-        // Arnoldi iteration starts
-        // Expand H
-        H.resize(k + 1, k);
+        // Arnoldi iteration starts, it will compute new entries for H and Qn
+        // Expand H to size n+1 x n
+        H.resize(n + 1, n);
         // current Krylov vector
         denseM<FLOAT> v = A_holder * q;
-        for (uint64_t n = 1; n <= k; n++)
+        for (uint64_t j = 1; j <= n; j++)
         {
-            // transpose of q multiply v will get a 1x1 matrix, assign the value to H(n,k)
-            H[(n - 1) * k + (k - 1)] = (transpose(q) * v)[0];
+            // transpose of q multiply v will get a 1x1 matrix, assign the value to H(j,n)
+            H[(j - 1) * n + (n - 1)] = (transpose(q) * v)[0];
             // update v
-            v = v - H[(n - 1) * k + (k - 1)] * q;
+            v = v - H[(j - 1) * n + (n - 1)] * q;
         }
-        H[(k + 1 - 1) * k + (k - 1)] = norm(v);
+        // H[n+1,n] = 2-norm of v
+        H[(n + 1 - 1) * n + (n - 1)] = norm(v);
 
         // next column of Qn
-        q = scalar_div(v, H[(k + 1 - 1) * k + (k - 1)]);
+        q = scalar_div(v, H[(n + 1 - 1) * n + (n - 1)]);
 
         // Expand Qn
-        Q.resize(Q.get_num_rows(), k + 1);
+        Q.resize(Q.get_num_rows(), n + 1);
 
-        // Add qk+1 into the k+1th column of Qn
+        // Add qn+1 into the n+1th column of Qn (becomes Qn+1)
         for (uint64_t i = 0; i < Q.get_num_rows(); i++)
         {
-            Q[i * k + k] = q[i];
+            Q[i * n + n] = q[i];
         }
 
-        // Arnoldi iterations stops here, it computed new entries for H and Qn
+        // Solve least square problem for finding the y that minimize norm(H*y-norm(r)*e1)
+        // We will first decompose H by QR decomposition using given rotation matrix
+        Omega.resize(n + 1, n + 1);
+        Omega[n * (n + 1) + n] = 1;
+        H_temp = Omega * H;
+        // Construct the given rotation matrix
+        denseM<FLOAT> G_new(n);
+        G = G_new;
+        G.resize(n + 1, n + 1);
+        FLOAT factor = pow(pow(H_temp[(n - 1) * n + (n - 1)], 2) + pow(H_temp[n * n + (n - 1)], 2), 0.5);
+        G[(n - 1) * (n + 1) + (n - 1)] = H_temp[(n - 1) * n + (n - 1)] / factor;
+        G[(n - 1) * (n + 1) + n] = H_temp[n * n + (n - 1)] / factor;
+        G[n * (n + 1) + (n - 1)] = -G[(n - 1) * (n + 1) + n];
+        G[n * (n + 1) + n] = G[(n - 1) * (n + 1) + (n - 1)];
 
-        k++;
+        /* cout << "H_temp:"
+              << "\n"
+              << H_temp << "\n";
+         cout << "n = " << n << "\n";*/
+        cout << "G:"
+             << "\n"
+             << G << "\n";
+        // Update Omega_n to Omega_n+1
+        // Omega_n+1 is getting from G multiplies Omega_n after resize
+        Omega = G * Omega;
+        Rn = Omega * H;
+        /*cout << "Rn:"
+             << "\n"
+             << Rn << "\n";*/
+
+        for (uint64_t i = 0; i < Rn.get_num_rows(); i++)
+        {
+            for (uint64_t j = 0; j < Rn.get_num_cols(); j++)
+            {
+                if (Rn[i * Rn.get_num_cols() + j] < 1e-10)
+                {
+                    Rn[i * Rn.get_num_cols() + j] = 0;
+                }
+            }
+        }
+
+        // e1.resize(n + 1, 1);
+        // beta_O_e1 = Omega * e1;
+
+        beta_O_e1[n] = G[n * (n + 1) + (n - 1)] * beta_O_e1[n - 1];
+        beta_O_e1[n - 1] = G[(n - 1) * (n + 1) + (n - 1)] * beta_O_e1[n - 1];
+
+        residual = fabs(beta_O_e1[n]);
+
+        n++;
     }
-    cout << "H is: "
-         << "\n"
-         << H << "\n";
-    return 0;
+
+    Rn.resize(Rn.get_num_rows() - 1, Rn.get_num_cols());
+    beta_O_e1.resize(Rn.get_num_rows(), 1);
+    cout << "beta" << beta_O_e1 << "\n";
+
+    vector<uint64_t> P1(Rn.get_num_cols());
+    for (uint64_t i = 0; i < Rn.get_num_cols(); i++)
+    {
+        P1[i] = i;
+    }
+    denseM<FLOAT> y = LU_solver(Rn, beta_O_e1, P1);
+
+    Q.resize(Q.get_num_rows(), Q.get_num_cols() - 1);
+    x = init_guess + Q * y;
+
+    return x;
 }
