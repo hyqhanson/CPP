@@ -213,10 +213,10 @@ Verify the result by norm(b - Ax):
 1.110223024625157e-16
 ```
 2. ### Cholesky-decomposition and solver
-Using Cholesky decomposition will decompose a positive definite matrix A into a lower-triangular matrix L and its conjugate transpose $L^T$, such that $L*L^T = A$.
-$L$ can be found by formula: <br/>
-$L_{i,j} = \sqrt{A_{i,j}-\sum_{k=1}^{j-1}L_{j,k}L^{*}_{j,k}}$ (for i = j) <br/>
-$L_{i,j} = \frac{1}{L_{j,j}}(A_{i,j}-\sum_{k=1}^{j-1}L_{i,k}L^{*}_{j,k})$ (for i > j) <br/>
+Using Cholesky decomposition will decompose a positive definite matrix A into a lower-triangular matrix L and its conjugate transpose $L^T$, such that $L*L^T = A$. 
+$L$ can be found by formula: 
+1. $L_{i,j} = \sqrt{A_{i,j}-\sum\nolimits_{k=1}^{j-1} L_{j,k}L^{*}_{j,k}}$ (for i = j) 
+2. $L_{i,j} = \frac{1}{L_{j,j}}(A_{i,j}-\sum\nolimits_{k=1}^{j-1}L_{i,k}L^{*}_{j,k})$ (for i > j) <br>
 $L^T$ is the conjugate transpose of $L$, so they are stored as one single symmetric matrix as the return value of this function. It is generally faster when decompose a positive definite matrix than using LU-decomposition.
 ```cpp
 // Cholesky decomposition
