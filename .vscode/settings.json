@@ -1,0 +1,32 @@
+{
+    "files.associations": {
+        "stdio.h": "c",
+        "stdexcept": "cpp",
+        "iostream": "cpp",
+        "ostream": "cpp",
+        "vector": "cpp",
+        "iosfwd": "cpp",
+        "array": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "chrono": "cpp",
+        "random": "cpp",
+        "algorithm": "cpp",
+        "complex": "cpp",
+        "compare": "cpp"
+    },
+    "cSpell.words": [
+        "Arnoldi",
+        "boolalpha",
+        "chole",
+        "chrono",
+        "cmath",
+        "cout",
+        "GMRES",
+        "Hessenberg",
+        "iostream",
+        "Krylov",
+        "stdexcept",
+        "tparam"
+    ]
+}
