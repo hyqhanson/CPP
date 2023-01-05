@@ -98,7 +98,7 @@ cout << "3x3 matrix m3 is: "
 Construct a new denseM with an integer, create a nxn identity matrix.
 ```cpp
 // Create a 3x3 matrix which is a positive definite matrix
-denseM<double> m4(3);
+          denseM<double> m4(3);
           cout << "3x3 identity matrix m4 is: "
                << "\n"
                << m4 << "\n";
