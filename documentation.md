@@ -1,21 +1,19 @@
 ## Main Goal
-The C++ program *main.cpp* are focusing on demonstrating the class **denseM** which is storing dense matrix in a 1d floating-point number vector. Using the class and its member functions to implement LU-factorization and Cholesky-factorization including the linear system solver with these factorization. Eventually, using these factorizations to implement iterative refinement in three precisions, for getting a more accurate result than regular linear system solver and less time cost than fixed-precision iterative refinement. All declarations and implementations are in *denseM.hpp* header file. 
+The C++ program *main.cpp* are focusing on demonstrating the class **denseM** which is storing dense matrix in a 1d floating-point number vector. Using the class and its member functions to implement LU-factorization and Cholesky-factorization including the linear system solver with these factorization. Eventually, using these factorizations to implement iterative refinement in three precisions, for getting a more accurate result than regular linear system solver and less time cost than fixed-precision iterative refinement. In addition, it also includes Generalized minimal residual method(GMRES) for GMRES-iterative refinement in mixed precisions. GMRES-IR can handle situations where the matrix has high condition numbers and cannot get a good approximation in the regular iterative refinement. All declarations and implementations are in *denseM.hpp* header file. 
 <br/>
 
 The main implementations includes:
-1. [Constructor by two any precision integers](#constructor-for-preallocation)
-2. [Constructor by two any precision integers, and one any floating-point number type vector](#constructor-for-specific-matrix)
+1. [Constructor by two unsigned 64bits integers](#constructor-for-preallocation)
+2. [Constructor by two unsigned 64bits integers, and one any floating-point number type vector](#constructor-for-specific-matrix)
 3. [Constructor by one any precision integer, one any floating-point number type vector, and one boolean variable (0 or 1)](#constructor-for-positive-definite-matrix)
-4. [Constructor by a existed denseM object, change its integer/floating-point number precision](#constructor-for-change-precision)
-5. [Member function "at"](#member-function-at)
-6. [Member function overloading operator "[]"](#member-function-overloading-operator)
-7. [Matrix addition](#matrix-addition)
-8. [Matrix subtraction](#matrix-subtraction)
-9. [Matrix multiplication](#matrix-multiplication)
-10. [Infinity norm of matrix](#infinity-norm-of-matrix)
-11. [LU-decomposition and solver](#lu-decomposition-and-solver)
-12. [Cholesky-decomposition and solver](#cholesky-decomposition-and-solver)
-13. [Iterative refinement]
+4. [Constructor by one unsigned 64bits integers](#constructor-for-identity-matrix)
+5. [Constructor by two unsigned 64bits integers, and an existed file contains matrix](#constructor-for-building-matrix-by-reading-file)
+6. [Constructor by a existed denseM object, change its integer/floating-point number precision](#constructor-for-change-precision)
+7. [LU-decomposition and solver](#lu-decomposition-and-solver)
+8. [Cholesky-decomposition and solver](#cholesky-decomposition-and-solver)
+9. [Generalized minimal residual method(GMRES)](#gmres)
+10. [Iterative refinement](#iterative-refinement)
+11. [GMRES-iterative refinement](#gmres-iterative-refinement)
 
 <br/>
 
@@ -24,7 +22,7 @@ This program contains several C++ header files:
 
 `<iostream>`, `<chrono>`, `<stdexcept>`, `<vector>`, `<string>`, `<algorithm>`, `<cmath>`
 
-The integer number can use any signed or unsigned integer type, the width of the integer is depending on the matrix size the user inputs. <br/>
+The integer number needs to be unsigned 64bits integer type, to avoid potential warnings. <br/>
 The floating-point number can use `float` and `double` by default. 
 <br/>
 
@@ -36,7 +34,8 @@ Class *denseM* has private variables:
 4. `bool is_pos_def = 0`. Status of the matrix if or not it's positive definite.
 <br/>
 Every initialized denseM object will have the specific number of rows and columns in a integer type `INT`, and a 1d vector of the matrix in a floating-point number type `FLOAT`.
-### Constructors:
+
+## Constructors:
 1. ### Constructor for preallocation
 Construct a new denseM object with zeros in the matrix, given the sizes. It is for preallocating the memory.
 ```cpp
@@ -94,7 +93,48 @@ cout << "3x3 matrix m3 is: "
 12 37 -43
 -16 -43 98
 ```
-4. ### Constructor for change precision
+
+4. ### Constructor for identity matrix
+Construct a new denseM with an integer, create a nxn identity matrix.
+```cpp
+// Create a 3x3 matrix which is a positive definite matrix
+denseM<double> m4(3);
+          cout << "3x3 identity matrix m4 is: "
+               << "\n"
+               << m4 << "\n";
+```
+```
+3x3 identity matrix m4 is:
+1 0 0
+0 1 0 
+0 0 1
+```
+5. ### Constructor for building matrix by reading file
+Construct a new denseM object given size and a file name which contains matrix. The matrix number in the file can be separated by comma or white space. (If the file has extension "csv", using comma to separate numbers can have a better format inside the file) </br>
+User can also use function `output` to write a file.
+```cpp
+// "matrix.csv"
+// 1,2,3
+// 4,5,6
+// 7,8,9
+// Create a 3x3 matrix given a file
+          denseM<double> f1(3, 3, "matrix.csv");
+          cout << "3x3 matrix f1 is: "
+               << "\n"
+               << f1 << "\n";
+          // Output and write the matrix into a file
+          f1.output("m2.csv");
+```
+```
+3x3 matrix f1 is: 
+1 2 3
+4 5 6
+7 8 9
+
+m2.csv generated successfully.
+```
+
+6. ### Constructor for change precision
 Construct a new denseM object based on a existed denseM object with another precision.
 ```cpp
 // Change precision of m1 from double to float
@@ -117,146 +157,9 @@ m1 in float precision is:
 1.123399972915649 2.5 3.333300113677979
 4.190000057220459 5 6.199999809265137
 ```
-5. ### Member function "at"
-Show the value of matrix by given row number and column number. It will use the mathematical index of matrix. <br/>
-For example, M.at(3,2) will show the value at 3rd row and 2nd column in matrix M.
-```cpp
-// Check the value in 1st row, 2nd column in m1 by "at"
-vector<double> v1 = {1.1234, 2.5, 3.3333, 4.19, 5, 6.2};
-denseM<uint32_t, double> m1(2, 3, v1);
-cout << "2x3 matrix m1 is: "
-     << "\n"
-     << m1 << "\n";
-cout << "m1's value in 1st row, 2nd column is: " << m1.at(1, 2) << "\n";
-```
-```
-2x3 matrix m1 is:
-1.1234 2.5 3.3333
-4.19 5 6.2
 
-m1's value in 1st row, 2nd column is: 2.5
-```
-6. ### Member function overloading operator "[]"
-Overload [] operator for finding specific elements given the index. It has two versions, one is the value at the index is modifiable, another one is non-modifiable.
-```cpp
-vector<double> v1 = {1.1234, 2.5, 3.3333, 4.19, 5, 6.2};
-denseM<uint32_t, double> m1(2, 3, v1);
-// Check the value on index 4 in m1 by "[]"
-cout << "m1's value on index 4 is: " << m1[4] << "\n";
-// Change the value on index 4 in m1 by "[]"
-m1[4] = 5.1234;
-cout << "m1's changed value on index 4 is: " << m1[4] << "\n\n";
-```
-```
-m1's value at index 4 is: 5
-m1's changed value on index 4 is: 5.1234
-```
-
-7. ### Matrix addition
-Overloaded binary operator + to calculate the summation of the first denseM object and the second denseM object. It uses the overloaded operator [] for direct-accessing denseM object and change the value for saving the memories.
-```cpp
-// Addition
-          vector<double> a1 = {1, 2, 3, 4.5};
-          vector<double> a2 = {-1, 2.5, -6, -0.4};
-          denseM<uint32_t, double> A1(2, 2, a1);
-          denseM<uint32_t, double> A2(2, 2, a2);
-          cout << "matrix A1: "
-               << "\n"
-               << A1 << "matrix A2: "
-               << "\n"
-               << A2 << "\n";
-          cout << "A1 + A2 = "
-               << "\n"
-               << A1 + A2 << "\n";
-```
-```
-matrix A1:
-1 2
-3 4.5
-matrix A2:
--1 2.5
--6 -0.4
-
-A1 + A2 =
-0 4.5
--3 4.1
-```
-
-8. ### Matrix subtraction
-Overloaded binary operator - to calculate the subtraction of the first denseM object and the second denseM object. It uses the overloaded operator [] for direct-accessing denseM object and change the value for saving the memories.
-```cpp
-// Subtraction
-          vector<double> a1 = {1, 2, 3, 4.5};
-          vector<double> a2 = {-1, 2.5, -6, -0.4};
-          denseM<uint32_t, double> A1(2, 2, a1);
-          denseM<uint32_t, double> A2(2, 2, a2);
-          cout << "matrix A1: "
-               << "\n"
-               << A1 << "matrix A2: "
-               << "\n"
-               << A2 << "\n";
-          cout << "A1 - A2 = "
-               << "\n"
-               << A1 - A2 << "\n";
-```
-```
-matrix A1:
-1 2
-3 4.5
-matrix A2:
--1 2.5
--6 -0.4
-
-A1 - A2 =
-2 -0.5
-9 4.9
-```
-
-9. ### Matrix multiplication
-Overloaded binary operator * to calculate the multiplication of the first denseM object and the second denseM object. It uses the overloaded operator [] for direct-accessing denseM object and change the value for saving the memories.
-```cpp
-// Multiplication
-          vector<double> a1 = {1, 2, 3, 4.5};
-          vector<double> a2 = {-1, 2.5, -6, -0.4};
-          denseM<uint32_t, double> A1(2, 2, a1);
-          denseM<uint32_t, double> A2(2, 2, a2);
-          cout << "matrix A1: "
-               << "\n"
-               << A1 << "matrix A2: "
-               << "\n"
-               << A2 << "\n";
-          cout << "A1 * A2 = "
-               << "\n"
-               << A1 * A2 << "\n";
-```
-```
-matrix A1:
-1 2
-3 4.5
-matrix A2:
--1 2.5
--6 -0.4
-
-A1 * A2 =
--13 1.7
--30 5.7
-```
-10. ### Infinity norm of matrix
-Finding the largest row sum of the matrix.
-```cpp
-vector<double> a1 = {1, 2, 3, 4.5};
-denseM<uint32_t, double> A1(2, 2, a1);
-cout << "matrix A1: " << "\n" << A1 << "\n";
-cout << "Infinity norm of A1: " << norm(A1) << "\n";
-```
-```
-matrix A1:
-1 2
-3 4.5
-
-Infinity norm of A1: 7.5
-```
-11. ### LU-decomposition and solver
+## Decompositions and solvers
+1. ### LU-decomposition and solver
 Using LU-decomposition with partial pivoting. By the idea of Gaussian elimination, it will modify the denseM object A to the combination of L and U for saving memory (U will be the top-half of the modified A including the diagonal, L will be the bottom-half of the modified A excluding the diagonal, since the diagonal of L is always 1). Modify the integer vector P to record row swapping as in permutation matrix. It will return exit flag as integer to tell user the status of the result. Return 0 means success, return >0 means decomposition is completed but U is singular.
 ```cpp
 // LU-decomposition
@@ -310,7 +213,7 @@ The result from LU solver is:
 Verify the result by norm(b - Ax):
 1.110223024625157e-16
 ```
-12. ### Cholesky-decomposition and solver
+2. ### Cholesky-decomposition and solver
 Using Cholesky decomposition will decompose a positive definite matrix A into a lower-triangular matrix L and its conjugate transpose $L^T$, such that $L*L^T = A$.
 $L$ can be found by formula: <br/>
 $L_{i,j} = \sqrt{A_{i,j}-\sum_{k=1}^{j-1}L_{j,k}L^{*}_{j,k}}$ (for i = j) <br/>
@@ -360,7 +263,31 @@ The result from Cholesky solver is:
 Verify the result by norm(b - Ax):
 2.842170943040401e-14
 ```
-13. ### Iterative refinement
+3. ### GMRES
+Generalized minimal residual method (GMRES) is an iterative method for solving linear system. There are three arguments, the linear system A and b, and an intitial guess $x_{0}$. The method approximates solution of the linear system by using Krylov subspace vectors $K_{n}(A,r_{0})=\operatorname {span} \,\{r_{0},Ar_{0},A^{2}r_{0},\ldots ,A^{n-1}r_{0}\}$, where $r_{0} = b-Ax_{0}$. </br>
+Starting iteration on the first vector. We need to use the Arnoldi iteration is used to find each vector in its orthonormal form in $q_1,\ldots,q_n$ stores in Q and produces a Hessenberg matrix H. Then we need to solve the least square problem $||Hy-||r||e_{1}||$ , by finding the y that can minimize it. Using Given rotation matrix to help converting H into a upper triangular matrix R, and updating $||r_{0}||e_{1}$ by given rotation matrix's elements to get a vector $g_{n}$. Solve $Ry=g_{n}$ to get y. </br>
+Finally, update the initial guess $x_0$ by $x = x_{0} + Qy$. If the new x doesn't meet the criteria, it will recall the function and using x as the new initial guess.
+```cpp
+          vector<float> gmres_a1 = {5.23, 2.11, 3.15, 0, 1.67, 4.57, 10.111, 6.223, 0};
+          denseM<float> GMRES_A1(3, 3, gmres_a1);
+          vector<float> gmres_b1 = {1, 2, 3};
+          denseM<float> GMRES_B1(3, 1, gmres_b1);
+          vector<float> guess = {1.24, 2.22, 3};
+          denseM<float> Guess(3, 1, guess);
+          denseM<float> G_result1 = GMRES<float>(GMRES_A1, GMRES_B1, Guess);
+          cout << "GMRES result is: "
+               << "\n"
+               << G_result1 << "\n";
+```
+```
+GMRES result is:
+-0.2289841175079346
+0.8541311025619507
+0.1255145072937012
+```
+
+## Different Iterative refinements:
+1. ### Iterative refinement
 Using iterative refinement to solve linear system for less round off error. Including LU-decomposition and Cholesky decomposition to solve linear system inside iterations. Using three floating-point number precisions to accelerate decomposition by low-accuracy precision, and getting a more precise residual for updating the solution in each iteration by using a high-accuracy precision. Most variable are store in the middle precision. <br/>
 To use this function, user needs to put one integer type and all three floating-point number types in the bracket with order from low accuracy to high accuracy. For example: `IR<uint32_t, float, double, double>(IR_A1, IR_B1)` <br/><br/>
 If the matrix is regular dense matrix, it will use LU-decomposition. The tolerance is 1e-16.
@@ -404,4 +331,26 @@ Iterative refinement succeeded!
 x = 1.245555555555548
 2.182222222222224
 3.335555555555555
+```
+
+2. ### GMRES-iterative refinement
+Preconditioned GMRES-based Iterative Refinement is for solving linear system even with some ill-conditioned matrices. Including LU-decomposition to solve linear system inside iterations. Using three floating-point number precisions. Accelerating decomposition by low-accuracy precision, and getting a more precise residual for updating the solution in each iteration by using a high-accuracy precision. Inside the iterative refinement, the correction c will be updated in medium-accuracy precision by GMRES after preconditioned by $\hat{U}^{-1}\hat{L}^{-1}$, where $\hat{U}$ and $\hat{L}$ are LU-decomposition in low-accuracy precision.
+```cpp
+          vector<float> gmres_a1 = {5.23, 2.11, 3.15, 0, 1.67, 4.57, 10.111, 6.223, 0};
+          denseM<float> GMRES_A1(3, 3, gmres_a1);
+          vector<float> gmres_b1 = {1, 2, 3};
+          denseM<float> GMRES_B1(3, 1, gmres_b1);
+          // GMRES-IR
+          denseM<double> GMRES_IR_result = GMRES_IR<float, double, double>(GMRES_A1, GMRES_B1);
+          cout << GMRES_IR_result << "\n";
+```
+```
+Starting iterative refinement:
+Elapsed time: 0.0005964 seconds
+The total iteration is 2
+The error in the last iteration is 0
+Iterative refinement succeeded!
+x = -0.2289841815397392
+0.854131292168907
+0.1255143888812452
 ```

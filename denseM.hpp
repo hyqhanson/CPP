@@ -518,6 +518,8 @@ void denseM<FLOAT>::output(const string &filename) const
     }
 
     out.close();
+    cout << filename << " generated successfully."
+         << "\n\n";
 }
 
 /**
@@ -697,7 +699,7 @@ denseM<FLOAT> operator*(const FLOAT &scalar, const denseM<FLOAT> &M)
     uint64_t size = row * col;
 
     denseM<FLOAT> result(row, col);
-    for (uint64_t i; i < size; i++)
+    for (uint64_t i = 0; i < size; i++)
     {
         result[i] = M[i] * scalar;
     }
@@ -767,10 +769,10 @@ FLOAT norm(const denseM<FLOAT> &M)
 
     for (uint64_t i = 0; i < size; i++)
     {
-        sum += pow(fabs(M[i]), 2);
+        sum += powf(fabs(M[i]), 2);
     }
 
-    sum = pow(sum, 0.5);
+    sum = powf(sum, 0.5);
     return sum;
 }
 
@@ -895,6 +897,13 @@ uint64_t LU_withPivot(denseM<FLOAT> &A, vector<uint64_t> &P)
     return 0;
 }
 
+/**
+ * @brief Get lower triangular matrix U from modified A in LU_withPivot
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param A The modified matrix from LU_withPivot
+ * @return denseM<FLOAT> Lower triangular matrix
+ */
 template <typename FLOAT>
 denseM<FLOAT> Lower_triangular(const denseM<FLOAT> &A)
 {
@@ -922,6 +931,13 @@ denseM<FLOAT> Lower_triangular(const denseM<FLOAT> &A)
     return lower;
 }
 
+/**
+ * @brief Get upper triangular matrix U from modified A in LU_withPivot
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param A The modified matrix from LU_withPivot
+ * @return denseM<FLOAT> Upper triangular matrix
+ */
 template <typename FLOAT>
 denseM<FLOAT> Upper_triangular(const denseM<FLOAT> &A)
 {
@@ -933,13 +949,12 @@ denseM<FLOAT> Upper_triangular(const denseM<FLOAT> &A)
     denseM<FLOAT> upper(size, size);
     for (uint64_t i = 0; i < size; i++)
     {
-        for (uint64_t zero = 0; zero < i; zero++)
+        for (uint64_t j = 0; j < size; j++)
         {
-            upper.push_back(0);
-        }
-        for (uint64_t j = i; j < size; j++)
-        {
-            upper.push_back(A[i * size + j]);
+            if (i <= j)
+            {
+                upper[i * size + j] = A[i * size + j];
+            }
         }
     }
 
@@ -957,30 +972,34 @@ denseM<FLOAT> Upper_triangular(const denseM<FLOAT> &A)
  * @return denseM<FLOAT> nx1 dense matrix, it is the solution of the linear system
  */
 template <typename FLOAT>
-denseM<FLOAT> LU_solver(denseM<FLOAT> &A, const denseM<FLOAT> &b, vector<uint64_t> &P)
+denseM<FLOAT> LU_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const vector<uint64_t> &P)
 {
     if (A.get_num_rows() != b.get_num_rows())
     {
         throw invalid_argument("b should have the same column number as A.");
     }
 
+    // Since A will be modified in LU_withPivot,
+    // create a holder for the modification and keep A constant
+    denseM<FLOAT> A_holder = A;
+    vector<uint64_t> P_holder = P;
     // Receive updated A and P
     // A contains L and U key parameters
     // P contains the row swapping information
-    uint64_t exit_flag = LU_withPivot(A, P);
+    uint64_t exit_flag = LU_withPivot(A_holder, P_holder);
     if (exit_flag != 0)
     {
         throw invalid_argument("This matrix cannot solve by LU");
     }
 
-    uint64_t size = A.get_num_cols();
+    uint64_t size = A_holder.get_num_cols();
 
     // Starts with LUx = Pb
     // Calculate Pb
     denseM<FLOAT> Pb(size, 1);
     for (uint64_t i = 0; i < size; i++)
     {
-        Pb[i] = b[(P[i])];
+        Pb[i] = b[(P_holder[i])];
     }
 
     // Let y = Ux, then Ly = Pb, solve y by forward substituion
@@ -1000,7 +1019,7 @@ denseM<FLOAT> LU_solver(denseM<FLOAT> &A, const denseM<FLOAT> &b, vector<uint64_
             // Lower-triangular matrix elements other than the diagonal numbers
             else if (j < i)
             {
-                temp += y[j] * A[i * size + j];
+                temp += y[j] * A_holder[i * size + j];
             }
         }
         // b subtracts temp will left out the value of the current yi times
@@ -1018,13 +1037,88 @@ denseM<FLOAT> LU_solver(denseM<FLOAT> &A, const denseM<FLOAT> &b, vector<uint64_
         // U value in each row
         for (uint64_t j = i - 1; j < size; j++)
         {
-            temp += x[j] * A[(i - 1) * size + j];
+            temp += x[j] * A_holder[(i - 1) * size + j];
         }
         // y subtracts temp will left out the value of the current xi times
         // corresponding U value, divide this U number, we can get xi
-        x[i - 1] = (y[i - 1] - temp) / A[(i - 1) * size + (i - 1)];
+        x[i - 1] = (y[i - 1] - temp) / A_holder[(i - 1) * size + (i - 1)];
     }
     return x;
+}
+
+/**
+ * @brief Using LU factorization to find the inverse of A, such that A^-1 = U^-1L^-1.
+ * This will be used in preconditioned system of GMRES-IR
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param A nxn dense matrix
+ * @return denseM<FLOAT> The inverse matrix of A
+ */
+template <typename FLOAT>
+denseM<FLOAT> inverse(const denseM<FLOAT> A)
+{
+    if (A.get_num_rows() != A.get_num_cols())
+    {
+        throw invalid_argument("Non-square matrix does not invertible");
+    }
+    uint64_t size = A.get_num_rows();
+
+    // Since A will be modified in LU_withPivot,
+    // create a holder for the modification and keep A constant
+    denseM<FLOAT> A_holder = A;
+
+    // Creating original permutation matrix in vector form
+    // P = {0,1,2,...,n-1} for nxn matrix A
+    vector<uint64_t> P(size);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        P[i] = i;
+    }
+
+    // Get LU of A
+    uint64_t exit_flag = LU_withPivot(A_holder, P);
+    if (exit_flag != 0)
+    {
+        throw invalid_argument("This matrix cannot solve by LU");
+    }
+    // get L
+    denseM<FLOAT> lower = Lower_triangular(A_holder);
+    // Calculate PL
+    denseM<FLOAT> PL(size, size);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        for (uint64_t j = 0; j < size; j++)
+        {
+            PL[i * size + j] = lower[(P[i]) * size + j];
+        }
+    }
+    // get U
+    denseM<FLOAT> upper = Upper_triangular(A_holder);
+
+    // Preallocate A inverse matrix
+    denseM<FLOAT> A_inv(size, size);
+
+    // A*A^-1 = I, so P*L*U*A^-1 = I
+    // Let U*A^-1 = x, P*Lx = I; solve x then use it get A^-1
+    for (uint64_t i = 0; i < size; i++)
+    {
+        // columns of a identity matrix
+        denseM<FLOAT> e(size, 1);
+        // Column in identity matrix
+        e[i] = 1;
+        // Solve x
+        denseM<FLOAT> x = LU_solver(PL, e, P);
+        // Solve column in A_inv
+        denseM<FLOAT> a_inv = LU_solver(upper, x, P);
+
+        // Add a_inv into A_inv
+        for (uint64_t j = 0; j < size; j++)
+        {
+            A_inv[j * size + i] = a_inv[j];
+        }
+    }
+
+    return A_inv;
 }
 
 /**
@@ -1148,7 +1242,7 @@ denseM<FLOAT> cholesky_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
  * solved by iterative refinement
  */
 template <typename FACT, typename FLOAT, typename RES>
-denseM<FLOAT> IR(denseM<FLOAT> &A, const denseM<FLOAT> &b)
+denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
 {
     uint64_t size = A.get_num_cols();
 
@@ -1224,7 +1318,9 @@ denseM<FLOAT> IR(denseM<FLOAT> &A, const denseM<FLOAT> &b)
 
         // Using LU again in FACT precision to get correction
         c = LU_solver(Af, denseM<FACT>(r), P);
-        Af = denseM<FACT>(A);
+        cout << "c: \n"
+             << c << "\n";
+        // Af = denseM<FACT>(A);
         x = x + c;
         iter++;
     }
@@ -1239,8 +1335,22 @@ denseM<FLOAT> IR(denseM<FLOAT> &A, const denseM<FLOAT> &b)
     return x;
 }
 
+/**
+ * @brief Generalized minimal residual method (GMRES) is an iterative method for solving
+ * linear system. The method approximates solution of the linear system by using
+ * Krylov subspace vectors. The Arnoldi iteration is used to find this vector in orthonormal
+ * form in Q and produces a Hessenberg matrix H. Then using Given rotation matrix to help
+ * solving the least square problem norm(H*y-norm(r)*e1), find the y that can minimize it.
+ * Finally, update x0 by x = x0 + Q*y
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param A nxn denseM matrix
+ * @param b nx1 denseM matrix
+ * @param init_guess nx1 denseM matrix
+ * @return denseM<FLOAT> The approximated solution of the linear system
+ */
 template <typename FLOAT>
-denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM<FLOAT> init_guess)
+denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM<FLOAT> init_guess)
 {
     uint64_t size = A.get_num_cols();
     denseM<FLOAT> A_holder = A;
@@ -1251,16 +1361,14 @@ denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM<FLOAT
     {
         P[i] = i;
     }
-    // Initial x
-    // denseM<FLOAT> x0 = LU_solver(A, b, P);
 
     // Initial residual
     denseM<FLOAT> r0 = b - (A_holder * init_guess);
-    cout << r0 << "\n";
 
     // Use Arnoldi iteration to find the orthonormal vector q1,q2,...,qn for Krylov subspace
     // First column of Qn: q1, uses in Arnoldi iteration
     denseM<FLOAT> q = scalar_div(r0, norm(r0));
+
     // Initialize Qn with its first column
     // It is the orthonormal basis for the Krylov subspace
     denseM<FLOAT> Q = q;
@@ -1273,20 +1381,21 @@ denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM<FLOAT
     // initialize given rotation matrix
     denseM<FLOAT> G(1, 1);
     // Use for pre-multiplying the Hessenberg matrix to make it be upper triangular
-    denseM<FLOAT> Omega(1);
+    // denseM<FLOAT> Omega(2);
 
     uint64_t max_iter = 5;
     // Initialize residual
     FLOAT residual = 1;
     // tolerance for stopping iteration
-    FLOAT tol = 1e-6;
+    double tol = 1e-10;
 
-    // denseM<FLOAT> e1(1, 1);
-    denseM<FLOAT> e1(max_iter + 1, 1);
+    // beta = norm(r0), e1 = {1,0,0...,0}'
+    denseM<FLOAT> e1(1, 1);
     e1[0] = 1;
     denseM<FLOAT> beta_O_e1 = norm(r0) * e1;
-
+    denseM<FLOAT> beta_test = norm(r0) * e1;
     denseM<FLOAT> x(1, 1);
+    denseM<FLOAT> y(1, 1);
     // iteration tracker
     uint64_t n = 1;
     while (residual > tol && n <= max_iter)
@@ -1295,13 +1404,22 @@ denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM<FLOAT
         // Expand H to size n+1 x n
         H.resize(n + 1, n);
         // current Krylov vector
+
         denseM<FLOAT> v = A_holder * q;
-        for (uint64_t j = 1; j <= n; j++)
+
+        for (uint64_t j = 0; j < n; j++)
         {
+            denseM<FLOAT> q_j(Q.get_num_rows(), 1);
+            for (uint64_t k = 0; k < Q.get_num_rows(); k++)
+            {
+
+                q_j[k] = Q[k * Q.get_num_cols() + j];
+            }
+
             // transpose of q multiply v will get a 1x1 matrix, assign the value to H(j,n)
-            H[(j - 1) * n + (n - 1)] = (transpose(q) * v)[0];
+            H[j * n + (n - 1)] = (transpose(q_j) * v)[0];
             // update v
-            v = v - H[(j - 1) * n + (n - 1)] * q;
+            v = v - H[j * n + (n - 1)] * q_j;
         }
         // H[n+1,n] = 2-norm of v
         H[(n + 1 - 1) * n + (n - 1)] = norm(v);
@@ -1315,74 +1433,185 @@ denseM<FLOAT> GMRES(denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM<FLOAT
         // Add qn+1 into the n+1th column of Qn (becomes Qn+1)
         for (uint64_t i = 0; i < Q.get_num_rows(); i++)
         {
-            Q[i * n + n] = q[i];
+            Q[i * (n + 1) + n] = q[i];
         }
 
         // Solve least square problem for finding the y that minimize norm(H*y-norm(r)*e1)
         // We will first decompose H by QR decomposition using given rotation matrix
-        Omega.resize(n + 1, n + 1);
-        Omega[n * (n + 1) + n] = 1;
-        H_temp = Omega * H;
+        uint64_t rows = H.get_num_rows();
+        uint64_t cols = H.get_num_cols();
+        // denseM<FLOAT> new_Omega(rows);
+        // Omega = new_Omega;
+        Rn = H;
+
         // Construct the given rotation matrix
-        denseM<FLOAT> G_new(n);
-        G = G_new;
-        G.resize(n + 1, n + 1);
-        FLOAT factor = pow(pow(H_temp[(n - 1) * n + (n - 1)], 2) + pow(H_temp[n * n + (n - 1)], 2), 0.5);
-        G[(n - 1) * (n + 1) + (n - 1)] = H_temp[(n - 1) * n + (n - 1)] / factor;
-        G[(n - 1) * (n + 1) + n] = H_temp[n * n + (n - 1)] / factor;
-        G[n * (n + 1) + (n - 1)] = -G[(n - 1) * (n + 1) + n];
-        G[n * (n + 1) + n] = G[(n - 1) * (n + 1) + (n - 1)];
-
-        /* cout << "H_temp:"
-              << "\n"
-              << H_temp << "\n";
-         cout << "n = " << n << "\n";*/
-        cout << "G:"
-             << "\n"
-             << G << "\n";
-        // Update Omega_n to Omega_n+1
-        // Omega_n+1 is getting from G multiplies Omega_n after resize
-        Omega = G * Omega;
-        Rn = Omega * H;
-        /*cout << "Rn:"
-             << "\n"
-             << Rn << "\n";*/
-
-        for (uint64_t i = 0; i < Rn.get_num_rows(); i++)
+        FLOAT c;
+        FLOAT s;
+        for (uint64_t i = 1; i < rows; i++)
         {
-            for (uint64_t j = 0; j < Rn.get_num_cols(); j++)
+            for (uint64_t j = 0; j < i; j++)
             {
-                if (Rn[i * Rn.get_num_cols() + j] < 1e-10)
+                if (Rn[i * cols + j] != 0)
                 {
-                    Rn[i * Rn.get_num_cols() + j] = 0;
+                    // The valid elements in given rotation matrix
+                    FLOAT factor = powf(powf(Rn[j * cols + j], 2) + powf(Rn[i * cols + j], 2), 0.5);
+                    c = Rn[j * cols + j] / factor;
+                    s = Rn[i * cols + j] / factor;
+
+                    // Construct R, it will be upper triangular
+                    // There are only 4 valid elements in given rotation matrix in each iteration.
+                    // Directly use the valid elements to update Rn, avoiding extra memory
+                    for (uint64_t k = 0; k < cols; k++)
+                    {
+                        FLOAT temp = Rn[j * cols + k] * c + Rn[i * cols + k] * s;
+                        Rn[i * cols + k] = Rn[j * cols + k] * (-s) + Rn[i * cols + k] * c;
+                        Rn[j * cols + k] = temp;
+                    }
+                    /*
+                    // Construct Omega, it is the cumulation of given rotation matrix
+                    for (uint64_t k = 0; k < rows; k++)
+                    {
+                        FLOAT temp = Omega[k * rows + j] * c + Omega[k * rows + i] * (-s);
+                        Omega[k * rows + i] = Omega[k * rows + j] * s + Omega[k * rows + i] * c;
+                        Omega[k * rows + j] = temp;
+                    }*/
                 }
             }
         }
+        Rn.resize(Rn.get_num_rows() - 1, Rn.get_num_cols());
+        // Omega.resize(Omega.get_num_rows(), Omega.get_num_cols());
+        beta_O_e1.resize(n + 1, 1);
 
-        // e1.resize(n + 1, 1);
-        // beta_O_e1 = Omega * e1;
+        //  Omega * beta_O_e1 will return [g_i, gamma_i]
+        //  g_i will be the vector we need for calculating the minimum y
+        beta_O_e1[n] = (-s) * beta_O_e1[n - 1];
+        beta_O_e1[n - 1] = c * beta_O_e1[n - 1];
 
-        beta_O_e1[n] = G[n * (n + 1) + (n - 1)] * beta_O_e1[n - 1];
-        beta_O_e1[n - 1] = G[(n - 1) * (n + 1) + (n - 1)] * beta_O_e1[n - 1];
-
+        //  Update residual to be gamma_i
         residual = fabs(beta_O_e1[n]);
 
         n++;
     }
 
-    Rn.resize(Rn.get_num_rows() - 1, Rn.get_num_cols());
-    beta_O_e1.resize(Rn.get_num_rows(), 1);
-    cout << "beta" << beta_O_e1 << "\n";
+    // Only keep g_i
+    beta_O_e1.resize(beta_O_e1.get_num_rows() - 1, 1);
 
+    // Solve y, it will also solve the least square problem
     vector<uint64_t> P1(Rn.get_num_cols());
     for (uint64_t i = 0; i < Rn.get_num_cols(); i++)
     {
         P1[i] = i;
     }
-    denseM<FLOAT> y = LU_solver(Rn, beta_O_e1, P1);
+    y = LU_solver(Rn, beta_O_e1, P1);
 
     Q.resize(Q.get_num_rows(), Q.get_num_cols() - 1);
+
+    // update x
     x = init_guess + Q * y;
 
+    denseM<FLOAT> r = b - A_holder * x;
+
+    // cout << "norm of r: " << norm(r) << "\n";
+    // restart the function if necessary
+    if (norm(r) > tol)
+    {
+        GMRES(A_holder, b, x);
+    }
+    return x;
+}
+
+/**
+ * @brief Preconditioned GMRES-based Iterative Refinement is for solving linear system
+ * even with some ill-conditioned matrices.
+ * Including LU-decomposition to solve linear system inside iterations.
+ * Using three floating-point number precisions to accelerate decomposition
+ * by low-accuracy precision, and getting a more precise residual for updating the
+ * solution in each iteration by using a high-accuracy precision. Inside the iterative
+ * refinement, the correction c will be updated by GMRES after preconditioned by U^-1L^-1
+ *
+ * @tparam FACT floating-point number precision used for LU-factorization
+ * (need to be a low-accurate precision)
+ * @tparam FLOAT Any floating-point number precision
+ * (the accuracy need to be between FACT and RES)
+ * @tparam RES floating-point number precision used for calculating residual
+ * (need to be a accurate precision)
+ * @param A nxn dense matrix in precision FLOAT
+ * @param b nx1 dense matrix in precision FLOAT
+ * @return denseM<FLOAT> nx1 dense matrix, it is the solution of the linear system
+ * solved by iterative refinement
+ */
+template <typename FACT, typename FLOAT, typename RES>
+denseM<FLOAT> GMRES_IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
+{
+    uint64_t size = A.get_num_cols();
+
+    // change to FACT precision for factorization
+    denseM<FACT> Af(A);
+    denseM<FACT> bf(b);
+
+    // Creating original permutation matrix in vector form
+    // P = {0,1,2,...,n-1} for nxn matrix A
+    vector<uint64_t> P(size);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        P[i] = i;
+    }
+
+    // max iteration
+    uint64_t max_iter = 10000;
+    // iteration counter
+    uint64_t iter = 0;
+
+    // residual
+    denseM<RES> r(size, 1);
+    // infinity norm of r
+    RES residual = 1;
+    // tolerance for stopping iteration
+    FLOAT tol = 1e-16;
+    // correction
+    denseM<FLOAT> c(size, 1);
+
+    cout << "Starting iterative refinement: "
+         << "\n";
+    // timing the process
+    chrono::time_point start_time = chrono::steady_clock::now();
+
+    // Calculate x0 for starting the iteration
+    // L,U in Af must be in FACT precision
+    // LU_solver returns x in FACT precision
+    denseM<FLOAT> x = LU_solver(Af, bf, P);
+    Af = denseM<FACT>(A);
+
+    denseM<FACT> Af_holder = Af;
+    // Calculate U^-1L^-1 in FACT precision
+    denseM<FACT> A_inv = inverse(Af_holder);
+    denseM<FACT> initial_guess(c);
+
+    while (iter != max_iter && residual > tol)
+    {
+        // residual must be in RES precision
+        r = b - (A * denseM<RES>(x));
+        residual = norm_inf<RES>(r);
+        if (residual == 0)
+        {
+            break;
+        }
+        // Using GMRES with precondition in FACT precision to get correction
+        // Precondition with LU so that (U^-1)(L^-1)*Ac = (U^-1)(L^-1)r
+        // Solve for the correction c by GMRES and store in FLOAT precision
+        denseM<FACT> cf = GMRES(A_inv * Af, A_inv * denseM<FACT>(r), initial_guess);
+
+        c = denseM<FLOAT>(cf);
+        x = x + c;
+        iter++;
+    }
+    chrono::time_point end_time = chrono::steady_clock::now();
+    chrono::duration<double> elapsed_time_seconds = end_time - start_time;
+    cout << "Elapsed time: " << elapsed_time_seconds.count() << " seconds\n";
+    cout << "The total iteration is " << iter << "\n";
+    cout << "The error in the last iteration is " << residual << "\n";
+    cout << "Iterative refinement succeeded!"
+         << "\n"
+         << "x = ";
     return x;
 }

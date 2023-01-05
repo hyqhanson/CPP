@@ -52,6 +52,7 @@ int main()
           cout << "3x3 matrix f1 is: "
                << "\n"
                << f1 << "\n";
+          // Output and write the matrix into a file
           f1.output("m2.csv");
 
           // Change precision of m1 from double to float
@@ -76,7 +77,22 @@ int main()
           m1[4] = 5.1234;
           cout << "m1's changed value on index 4 is: " << m1[4] << "\n\n";
 
-          // 3. Matrix arithmetic operators
+          // Restore the matrix
+          m1[4] = 5;
+
+          // Transpose
+          cout << "The transpose of a 2x3 matrix m1 is: "
+               << "\n"
+               << transpose(m1) << "\n";
+
+          // Resize
+          denseM<double> M1(3, 3, "matrix.csv");
+          M1.resize(2, 5);
+          cout << "Resize the 3x3 matrix m1 to 2x5 matrix: "
+               << "\n"
+               << M1 << "\n";
+
+          // 3. Matrix operation
           vector<double> a1 = {1, 2, 3, 4.5};
           vector<double> a2 = {-1, 2.5, -6, -0.4};
           denseM<double> A1(2, 2, a1);
@@ -88,8 +104,16 @@ int main()
                << A2 << "\n";
 
           // Infinity-norm
-          cout << "Infinity norm of A1: " << norm(A1) << "\n";
-          cout << "Infinity norm of A2: " << norm(A2) << "\n";
+          cout << "Infinity norm of A1: " << norm_inf(A1) << "\n";
+          cout << "Infinity norm of A2: " << norm_inf(A2) << "\n";
+
+          // Inverse
+          vector<double> a3 = {2, 4, 6, 3, 5, 1, 6, -2, 2};
+          denseM<double> A3(3, 3, a3);
+          cout << "Inverse of A3: \n"
+               << inverse(A3) << "\n";
+          cout << "Test inverse of A3 by A3 * A3^-1 = I: \n"
+               << A3 * inverse(A3) << "\n";
 
           // 4. Decompositions and solvers
           // LU-decomposition
@@ -116,10 +140,9 @@ int main()
                << "\n"
                << x1;
 
-          denseM<double> D1_origin2(3, 3, d1);
           cout << "Verify the result by norm(b - Ax): "
                << "\n"
-               << norm(B1 - (D1_origin2 * x1)) << "\n\n";
+               << norm_inf(B1 - (D1_origin * x1)) << "\n\n";
 
           // Cholesky decomposition
           vector<double> d2 = {4, 12, -16, 12, 37, -43, -16, -43, 98};
@@ -140,7 +163,7 @@ int main()
                << x2;
           cout << "Verify the result by norm(b - Ax): "
                << "\n"
-               << norm(B2 - (D2 * x2)) << "\n\n";
+               << norm_inf(B2 - (D2 * x2)) << "\n\n";
 
           // 5. Iterative Refinement
           // IR for regular dense matrix
@@ -160,6 +183,22 @@ int main()
           // Three precisions are float, double and double
           denseM<double> result2 = IR<float, double, double>(IR_A2, IR_B2);
           cout << result2 << "\n";
+
+          // GMRES
+          vector<float> gmres_a1 = {5.23, 2.11, 3.15, 0, 1.67, 4.57, 10.111, 6.223, 0};
+          denseM<float> GMRES_A1(3, 3, gmres_a1);
+          vector<float> gmres_b1 = {1, 2, 3};
+          denseM<float> GMRES_B1(3, 1, gmres_b1);
+          vector<float> guess = {1.24, 2.22, 3};
+          denseM<float> Guess(3, 1, guess);
+          denseM<float> G_result1 = GMRES<float>(GMRES_A1, GMRES_B1, Guess);
+          cout << "GMRES result is: "
+               << "\n"
+               << G_result1 << "\n";
+
+          // GMRES-IR
+          denseM<double> GMRES_IR_result = GMRES_IR<float, double, double>(GMRES_A1, GMRES_B1);
+          cout << GMRES_IR_result << "\n";
      }
 
      catch (const denseM<double>::size_mismatch &e)
