@@ -24,7 +24,7 @@ This program contains several C++ header files:
 
 <br/>
 
-## class infPrecision
+## class `denseM`
 Class *infPrecision* has a private variable `vector<int64_t> integer;`. Every initialized infPrecision object will convert input variable in this vector, each vector element contains one single-digit integer.
 ### Constructors:
 1. ### Default constructor
