@@ -26,7 +26,7 @@ The floating-point number type can use `float` and `double` by default.
 <br/>
 
 ## class `denseM`
-Class `denseM` has private variables:
+Templated Class `denseM<FLOAT>` has private variables:
 1. `uint64_t rows_ = 0`. Recording the number of rows, default number is 0.
 2. `uint64_t cols_ = 0`. Recording the number of columns, default number is 0.
 3. `vector<FLOAT> matrix_`. Recording the elements of the matrix in a floating-point number type vector.
