@@ -26,8 +26,8 @@ The integer number needs to be unsigned 64bits integer type, to avoid potential 
 The floating-point number can use `float` and `double` by default. 
 <br/>
 
-## class denseM
-Class *denseM* has private variables:
+## class `denseM`
+Class `denseM` has private variables:
 1. `INT rows_ = 0`. Recording the number of rows, default number is 0.
 2. `INT cols_ = 0`. Recording the number of columns, default number is 0.
 3. `vector<FLOAT> matrix_`. Recording the elements of the matrix in a floating-point number type vector.
@@ -98,7 +98,7 @@ cout << "3x3 matrix m3 is: "
 Construct a new denseM with an integer, create a nxn identity matrix.
 ```cpp
 // Create a 3x3 matrix which is a positive definite matrix
-denseM<double> m4(3);
+          denseM<double> m4(3);
           cout << "3x3 identity matrix m4 is: "
                << "\n"
                << m4 << "\n";
