@@ -5,7 +5,9 @@
  * number type vector, and overload several basic matrix arithmetics. The main goal is
  * using the class and the related functions, to implement LU-decomposition/Cholesky
  * decomposition and Iterative Refinement which uses three floating-point number precisions.
- * @version 0.1
+ * In addition, it also implement GMRES for helping to build up GMRES-IR, it is for handling
+ * linear systems where the matrices are ill-conditioned.
+ * @version 1.1
  * @date 2022-12-14
  *
  * @copyright Copyright (c) 2022
@@ -256,6 +258,7 @@ bool denseM<FLOAT>::is_symmetric() const
     {
         for (uint64_t j = 0; j < cols_; j++)
         {
+            // If A[i,j] = A[j,i]
             if (matrix_[i * cols_ + j] != matrix_[j * cols_ + i])
             {
                 return 0;
@@ -1318,8 +1321,7 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
 
         // Using LU again in FACT precision to get correction
         c = LU_solver(Af, denseM<FACT>(r), P);
-        cout << "c: \n"
-             << c << "\n";
+
         // Af = denseM<FACT>(A);
         x = x + c;
         iter++;
@@ -1383,7 +1385,7 @@ denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM
     // Use for pre-multiplying the Hessenberg matrix to make it be upper triangular
     // denseM<FLOAT> Omega(2);
 
-    uint64_t max_iter = 5;
+    uint64_t max_iter = 100;
     // Initialize residual
     FLOAT residual = 1;
     // tolerance for stopping iteration

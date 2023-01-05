@@ -12,8 +12,8 @@ The main implementations includes:
 7. [LU-decomposition and solver](#lu-decomposition-and-solver)
 8. [Cholesky-decomposition and solver](#cholesky-decomposition-and-solver)
 9. [Generalized minimal residual method(GMRES)](#gmres)
-10. [Iterative refinement](#iterative-refinement)
-11. [GMRES-iterative refinement](#gmres-iterative-refinement)
+10. [Iterative refinement](#mixed-precision-iterative-refinement)
+11. [GMRES-iterative refinement](#mixed-precision-gmres-ir)
 
 <br/>
 
@@ -264,7 +264,7 @@ Verify the result by norm(b - Ax):
 2.842170943040401e-14
 ```
 3. ### GMRES
-Generalized minimal residual method (GMRES) is an iterative method for solving linear system. There are three arguments, the linear system A and b, and an intitial guess $x_{0}$. The method approximates solution of the linear system by using Krylov subspace vectors $K_{n}(A,r_{0})=\operatorname {span} \,\{r_{0},Ar_{0},A^{2}r_{0},\ldots ,A^{n-1}r_{0}\}$, where $r_{0} = b-Ax_{0}$. </br>
+Generalized minimal residual method (GMRES) is an iterative method for solving linear system. There are three arguments, the linear system A and b, and an initial guess $x_{0}$. The method approximates solution of the linear system by using Krylov subspace vectors $K_{n}(A,r_{0})= span \,\{r_{0},Ar_{0},A^{2}r_{0},\ldots ,A^{n-1}r_{0}\}$, where $r_{0} = b-Ax_{0}$. </br>
 Starting iteration on the first vector. We need to use the Arnoldi iteration is used to find each vector in its orthonormal form in $q_1,\ldots,q_n$ stores in Q and produces a Hessenberg matrix H. Then we need to solve the least square problem $||Hy-||r||e_{1}||$ , by finding the y that can minimize it. Using Given rotation matrix to help converting H into a upper triangular matrix R, and updating $||r_{0}||e_{1}$ by given rotation matrix's elements to get a vector $g_{n}$. Solve $Ry=g_{n}$ to get y. </br>
 Finally, update the initial guess $x_0$ by $x = x_{0} + Qy$. If the new x doesn't meet the criteria, it will recall the function and using x as the new initial guess.
 ```cpp
@@ -287,8 +287,8 @@ GMRES result is:
 ```
 
 ## Different Iterative refinements:
-1. ### Iterative refinement
-Using iterative refinement to solve linear system for less round off error. Including LU-decomposition and Cholesky decomposition to solve linear system inside iterations. Using three floating-point number precisions to accelerate decomposition by low-accuracy precision, and getting a more precise residual for updating the solution in each iteration by using a high-accuracy precision. Most variable are store in the middle precision. <br/>
+1. ### Mixed-precision iterative refinement
+Using iterative refinement to solve linear system for less round off error. In the beginning of the iteration, using LU-decomposition or Cholesky decomposition to solve linear system. Using three floating-point number precisions to accelerate the decomposition by low-accuracy precision, and getting a more precise residual for updating the solution in each iteration by using a high-accuracy precision. Most variable are store in the middle precision. <br/>
 To use this function, user needs to put one integer type and all three floating-point number types in the bracket with order from low accuracy to high accuracy. For example: `IR<uint32_t, float, double, double>(IR_A1, IR_B1)` <br/><br/>
 If the matrix is regular dense matrix, it will use LU-decomposition. The tolerance is 1e-16.
 ```cpp
@@ -333,8 +333,8 @@ x = 1.245555555555548
 3.335555555555555
 ```
 
-2. ### GMRES-iterative refinement
-Preconditioned GMRES-based Iterative Refinement is for solving linear system even with some ill-conditioned matrices. Including LU-decomposition to solve linear system inside iterations. Using three floating-point number precisions. Accelerating decomposition by low-accuracy precision, and getting a more precise residual for updating the solution in each iteration by using a high-accuracy precision. Inside the iterative refinement, the correction c will be updated in medium-accuracy precision by GMRES after preconditioned by $\hat{U}^{-1}\hat{L}^{-1}$, where $\hat{U}$ and $\hat{L}$ are LU-decomposition in low-accuracy precision.
+2. ### Mixed-precision GMRES-IR
+Preconditioned GMRES-based Iterative Refinement is for solving linear system even with some ill-conditioned matrices. In the beginning of the iteration, using LU-decomposition or Cholesky decomposition to solve linear system. Using three floating-point number precisions to accelerate the decomposition by low-accuracy precision, and getting a more precise residual for updating the solution in each iteration by using a high-accuracy precision. Inside the iterative refinement, the correction c will be updated in medium-accuracy precision by GMRES after preconditioned by $\hat{U}^{-1}\hat{L}^{-1}$, where $\hat{U}$ and $\hat{L}$ are got from LU-decomposition in low-accuracy precision.
 ```cpp
           vector<float> gmres_a1 = {5.23, 2.11, 3.15, 0, 1.67, 4.57, 10.111, 6.223, 0};
           denseM<float> GMRES_A1(3, 3, gmres_a1);
