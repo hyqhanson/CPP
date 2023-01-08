@@ -22,18 +22,17 @@ This program contains several C++ header files:
 
 `<iostream>`, `<chrono>`, `<stdexcept>`, `<vector>`, `<string>`, `<algorithm>`, `<cmath>`, `<fstream>`
 
-The integer number needs to be unsigned 64bits integer type, to avoid potential warnings. <br/>
-The floating-point number can use `float` and `double` by default. 
+The floating-point number type can use `float` and `double` by default. 
 <br/>
 
 ## class `denseM`
-Class `denseM` has private variables:
-1. `INT rows_ = 0`. Recording the number of rows, default number is 0.
-2. `INT cols_ = 0`. Recording the number of columns, default number is 0.
+Templated Class `denseM<FLOAT>` has private variables:
+1. `uint64_t rows_ = 0`. Recording the number of rows, default number is 0.
+2. `uint64_t cols_ = 0`. Recording the number of columns, default number is 0.
 3. `vector<FLOAT> matrix_`. Recording the elements of the matrix in a floating-point number type vector.
 4. `bool is_pos_def = 0`. Status of the matrix if or not it's positive definite.
 <br/>
-Every initialized denseM object will have the specific number of rows and columns in a integer type `INT`, and a 1d vector of the matrix in a floating-point number type `FLOAT`.
+Every initialized denseM object will have the specific number of rows and columns in the integer type `uint64_t`, and a templated 1d vector of the matrix, with the floating-point number type `FLOAT`.
 
 ## Constructors:
 1. ### Constructor for preallocation
@@ -216,8 +215,8 @@ Verify the result by norm(b - Ax):
 2. ### Cholesky-decomposition and solver
 Using Cholesky decomposition will decompose a positive definite matrix A into a lower-triangular matrix L and its conjugate transpose $L^T$, such that $L*L^T = A$.
 $L$ can be found by formula: <br/>
-$L_{i,j} = \sqrt{A_{i,j}-\sum_{k=1}^{j-1}L_{j,k}L^{*}_{j,k}}$ (for i = j) <br/>
-$L_{i,j} = \frac{1}{L_{j,j}}(A_{i,j}-\sum_{k=1}^{j-1}L_{i,k}L^{*}_{j,k})$ (for i > j) <br/>
+$L_{i,j} = \sqrt{A_{i,j}-\sum\nolimits_{k=1}^{j-1}L_{j,k}L^{*}_{j,k}}$ (for i = j) <br/>
+$L_{i,j} = \frac{1}{L_{j,j}}(A_{i,j}-\sum\nolimits_{k=1}^{j-1}L_{i,k}L^{*}_{j,k})$ (for i > j) <br/>
 $L^T$ is the conjugate transpose of $L$, so they are stored as one single symmetric matrix as the return value of this function. It is generally faster when decompose a positive definite matrix than using LU-decomposition.
 ```cpp
 // Cholesky decomposition
