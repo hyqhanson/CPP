@@ -34,41 +34,34 @@ class denseM
 public:
     /**
      * @brief Construct a new denseM object with zeros, given the sizes
-     *
      */
     denseM(const uint64_t &, const uint64_t &);
 
     /**
      * @brief Construct a new denseM object with specific elements, given the
      * sizes and any floating-point number type vector contains all the elements
-     *
      */
     denseM(const uint64_t &, const uint64_t &, const vector<FLOAT> &);
 
     /**
      * @brief Construct a new denseM object accepts positive-definite matrix,
      * by given the size, the matrix itself, and a is-positive-definite checker
-     *
      */
     denseM(const uint64_t &, const vector<FLOAT> &, const bool &);
 
     /**
      * @brief Construct a new denseM object by given a integer
      *  It will construct a nxn identity matrix
-     *
      */
     denseM(const uint64_t &);
 
     /**
      * @brief Construct a new denseM object given the size and file name
-     *
      */
     denseM(const uint64_t &, const uint64_t &, const string &);
 
     /**
      * @brief Construct a new denseM object with another precision
-     *
-     * @tparam INT_alt Another integer precision (It could remain the same)
      * @tparam FLOAT_alt Another floating-point number precision
      */
     template <typename FLOAT_alt>
@@ -76,7 +69,6 @@ public:
 
     /**
      * @brief Get the vector which stores all the elements of matrix
-     *
      * @return const vector<FLOAT>& matrix_ the reference of the vector stores matrix numbers
      */
     const vector<FLOAT> &get_data() const
@@ -86,7 +78,6 @@ public:
 
     /**
      * @brief Get the number of rows
-     *
      * @return uint64_t Rows_ is the number of rows of the current matrix
      */
     uint64_t get_num_rows() const
@@ -96,7 +87,6 @@ public:
 
     /**
      * @brief Get the number of columns
-     *
      * @return uint64_t Cols_ is the number of columns of the current matrix
      */
     uint64_t get_num_cols() const
@@ -106,7 +96,6 @@ public:
 
     /**
      * @brief Get the matrix's is_pos_def information
-     *
      * @return true if the matrix is positive definite
      * @return false if the matrix is not positive definite
      */
@@ -117,7 +106,6 @@ public:
 
     /**
      * @brief Check if the matrix is symmetric
-     *
      * @return true if the matrix is symmetric
      * @return false if the matrix is not symmetric
      */
@@ -125,7 +113,6 @@ public:
 
     /**
      * @brief Check the value for a given row and col
-     *
      * @return const FLOAT
      */
     const FLOAT at(const uint64_t &, const uint64_t &) const;
@@ -133,7 +120,6 @@ public:
     /**
      * @brief overloading operator[] for checking the value in the 1d vector
      * for a given index, allows modification
-     *
      * @return FLOAT& the reference of the elements found by index
      */
     FLOAT &operator[](uint64_t);
@@ -141,26 +127,22 @@ public:
     /**
      * @brief overloading operator[] for checking the value in the 1d vector
      * for a given index, does not allow modification
-     *
      * @return const FLOAT& the reference of the elements found by index
      */
     const FLOAT &operator[](uint64_t) const;
 
     /**
      * @brief Resize a denseM object by given the new size
-     *
      */
     void resize(const uint64_t &, const uint64_t &);
 
     /**
      * @brief Output denseM object into a file
-     *
      */
     void output(const string &) const;
 
     /**
      * @brief Exception occurs when given matrix vector has invalid number of rows or columns
-     *
      */
     class invalid_size : public invalid_argument
     {
@@ -199,7 +181,6 @@ private:
 /**
  * @brief Construct a new denseM object with zeros in the matrix, given the sizes.
  * It is for preallocating the memory.
- *
  * @tparam FLOAT Any floating-point number precision
  * @param rows number of rows
  * @param cols number of columns
@@ -219,7 +200,6 @@ denseM<FLOAT>::denseM(const uint64_t &rows, const uint64_t &cols)
  * @brief Construct a new denseM object with specific elements, given the
  * sizes and a floating-point number type vector contains all the elements
  * of the matrix
- *
  * @tparam FLOAT Any floating-point number precision
  * @param rows Number of rows
  * @param cols Number of columns
@@ -241,7 +221,6 @@ denseM<FLOAT>::denseM(const uint64_t &rows, const uint64_t &cols, const vector<F
 
 /**
  * @brief Check if the matrix is symmetric
- *
  * @tparam FLOAT Any floating-point number precision
  * @return true if the matrix is symmetric
  * @return false if the matrix is not symmetric
@@ -273,7 +252,6 @@ bool denseM<FLOAT>::is_symmetric() const
  * is-positive-definite checker. The user should know if the matrix they create is or
  * not positive definite. Input 1 in the third argument if the user know the matrix is
  * positive definite, input 0 if it's not and it will create a regular square matrix
- *
  * @tparam FLOAT Any floating-point number precision
  * @param size The size of matrix
  * @param matrix A floating-point number vector contains all elements of matrix
@@ -300,7 +278,6 @@ denseM<FLOAT>::denseM(const uint64_t &size, const vector<FLOAT> &matrix, const b
 
 /**
  * @brief Construct a new denseM with an integer, create a nxn identity matrix
- *
  * @tparam FLOAT Any floating-point number precision
  * @param size Size of the identity matrix
  */
@@ -318,7 +295,6 @@ denseM<FLOAT>::denseM(const uint64_t &size)
 /**
  * @brief Construct a new denseM object given size and a file name which contains matrix.
  * The matrix number in the file can be separated by comma or white space.
- *
  * @tparam FLOAT Any floating-point number precision
  * @param rows Number of rows
  * @param cols Number of columns
@@ -362,7 +338,6 @@ denseM<FLOAT>::denseM(const uint64_t &rows, const uint64_t &cols, const string &
 /**
  * @brief Construct a new denseM object based on a existed denseM
  * object with another precision.
- *
  * @tparam FLOAT Any floating-point number precision
  * @tparam FLOAT_alt Another floating-point number precision
  * @param M matrix needs to change precision
@@ -383,7 +358,6 @@ denseM<FLOAT>::denseM(const denseM<FLOAT_alt> &M)
  * @brief Show the value of matrix by given row number and column number.
  * It will use the mathematical index of matrix. For example, M.at(3,2) will show
  * the value at 3rd row and 2nd column in matrix M
- *
  * @tparam FLOAT Any floating-point number precision
  * @param row Row number
  * @param col Column number
@@ -407,7 +381,6 @@ const FLOAT denseM<FLOAT>::at(const uint64_t &row, const uint64_t &col) const
 /**
  * @brief Overload [] operator for finding specific elements given the index.
  * Allow modification
- *
  * @tparam FLOAT Any floating-point number precision
  * @param index The element's index
  * @return FLOAT& The element
@@ -425,7 +398,6 @@ FLOAT &denseM<FLOAT>::operator[](uint64_t index)
 /**
  * @brief Overload [] operator for finding specific elements given the index.
  * Does not allow modification
- *
  * @tparam FLOAT Any floating-point number precision
  * @param index The element's index
  * @return FLOAT& The element
@@ -442,7 +414,6 @@ const FLOAT &denseM<FLOAT>::operator[](uint64_t index) const
 
 /**
  * @brief Resize a denseM object by given the new size
- *
  * @tparam FLOAT Any floating-point number precision
  * @param new_row New size of row
  * @param new_col New size of col
@@ -486,6 +457,12 @@ void denseM<FLOAT>::resize(const uint64_t &new_row, const uint64_t &new_col)
     this->matrix_ = newM;
 }
 
+/**
+ * @brief Generate the output file includes the denseM object by given the filename
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param filename String of the filename
+ */
 template <typename FLOAT>
 void denseM<FLOAT>::output(const string &filename) const
 {
@@ -528,7 +505,7 @@ void denseM<FLOAT>::output(const string &filename) const
 /**
  * @brief Overloaded binary operator << to print the matrix
  * stored in denseM object. Each element separated by white space
- *
+
  * @tparam FLOAT Any floating-point number precision
  * @param out An ostream object
  * @param M A denseM object
