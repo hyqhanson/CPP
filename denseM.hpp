@@ -729,7 +729,7 @@ denseM<FLOAT> scalar_div(const denseM<FLOAT> &M, const FLOAT &num)
 }
 
 /**
- * @brief Find the 2-norm of a nx1 matrix
+ * @brief Find the 2-norm of a nx1 matrix(in another word, find 2-norm of a vector)
  *
  * @tparam FLOAT Any floating-point number precision
  * @param M A nx1 matrix
@@ -792,7 +792,7 @@ FLOAT norm_inf(const denseM<FLOAT> &M)
  * @tparam FLOAT Any floating-point number precision
  * @param A Dense matrix, it will be modified to the combination of L and U
  * @param P A integer vector P = {0,1,2,...,n-1} for nxn matrix A
- * @return INT exit-flag of LU-decomposition
+ * @return uint64_t exit-flag of LU-decomposition
  * (return 0 means success, return >0 means completed but U is singular)
  */
 template <typename FLOAT>
@@ -863,7 +863,8 @@ uint64_t LU_withPivot(denseM<FLOAT> &A, vector<uint64_t> &P)
     }
 
     // print out messages with exit flag
-    // if LU_withPivot = i > 0, U(i,i) is exactly zero
+    // if LU_withPivot = i > 0, U(i,i) is exactly zero. This LU factorization cannot be
+    // used in solving linear system since division by 0 can be happened.
     if (count != size)
     {
         cout << "LU-decomposition is complete, the upper-triangular matrix's diagonal number in row"
@@ -952,13 +953,21 @@ denseM<FLOAT> Upper_triangular(const denseM<FLOAT> &A)
  * @return denseM<FLOAT> nx1 dense matrix, it is the solution of the linear system
  */
 template <typename FLOAT>
-denseM<FLOAT> LU_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const vector<uint64_t> &P)
+denseM<FLOAT> LU_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
 {
     if (A.get_num_rows() != b.get_num_rows())
     {
-        throw invalid_argument("b should have the same column number as A.");
+        throw invalid_argument("b should have the same row number as A in linear system.");
     }
 
+    uint64_t size = A.get_num_cols();
+    // Creating original permutation matrix in vector form
+    // P = {0,1,2,...,n-1} for nxn matrix A
+    vector<uint64_t> P(size);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        P[i] = i;
+    }
     // Since A will be modified in LU_withPivot,
     // create a holder for the modification and keep A constant
     denseM<FLOAT> A_holder = A;
@@ -969,10 +978,8 @@ denseM<FLOAT> LU_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const ve
     uint64_t exit_flag = LU_withPivot(A_holder, P_holder);
     if (exit_flag != 0)
     {
-        throw invalid_argument("This matrix cannot solve by LU");
+        throw invalid_argument("The exit-flag is not 0. This linear system cannot solve by LU");
     }
-
-    uint64_t size = A_holder.get_num_cols();
 
     // Starts with LUx = Pb
     // Calculate Pb
@@ -1059,7 +1066,7 @@ denseM<FLOAT> inverse(const denseM<FLOAT> A)
     uint64_t exit_flag = LU_withPivot(A_holder, P);
     if (exit_flag != 0)
     {
-        throw invalid_argument("This matrix cannot solve by LU");
+        throw invalid_argument("The exit-flag is not 0. This linear system cannot solve by LU");
     }
     // get L
     denseM<FLOAT> lower = Lower_triangular(A_holder);
@@ -1087,9 +1094,9 @@ denseM<FLOAT> inverse(const denseM<FLOAT> A)
         // Column in identity matrix
         e[i] = 1;
         // Solve x
-        denseM<FLOAT> x = LU_solver(PL, e, P);
+        denseM<FLOAT> x = LU_solver(PL, e);
         // Solve column in A_inv
-        denseM<FLOAT> a_inv = LU_solver(upper, x, P);
+        denseM<FLOAT> a_inv = LU_solver(upper, x);
 
         // Add a_inv into A_inv
         for (uint64_t j = 0; j < size; j++)
@@ -1159,7 +1166,7 @@ denseM<FLOAT> cholesky_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
 {
     if (A.get_num_rows() != b.get_num_rows())
     {
-        throw invalid_argument("b should have the same column number as A.");
+        throw invalid_argument("b should have the same row number as A in linear system.");
     }
 
     // Get A_chole (which contains both the lower triangular L and upper
@@ -1230,14 +1237,6 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     denseM<FACT> Af(A);
     denseM<FACT> bf(b);
 
-    // Creating original permutation matrix in vector form
-    // P = {0,1,2,...,n-1} for nxn matrix A
-    vector<uint64_t> P(size);
-    for (uint64_t i = 0; i < size; i++)
-    {
-        P[i] = i;
-    }
-
     // max iteration
     uint64_t max_iter = 10000;
     // iteration counter
@@ -1288,7 +1287,7 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     // Calculate x0 for starting the iteration
     // L,U in Af must be in FACT precision
     // LU_solver returns x in FACT precision
-    denseM<FLOAT> x = LU_solver(Af, bf, P);
+    denseM<FLOAT> x = LU_solver(Af, bf);
     Af = denseM<FACT>(A);
     while (iter != max_iter && residual > tol && residual != 0)
     {
@@ -1297,7 +1296,7 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
         residual = norm_inf<RES>(r);
 
         // Using LU again in FACT precision to get correction
-        c = LU_solver(Af, denseM<FACT>(r), P);
+        c = LU_solver(Af, denseM<FACT>(r));
 
         // Af = denseM<FACT>(A);
         x = x + c;
@@ -1481,7 +1480,7 @@ denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM
     {
         P1[i] = i;
     }
-    y = LU_solver(Rn, beta_O_e1, P1);
+    y = LU_solver(Rn, beta_O_e1);
 
     Q.resize(Q.get_num_rows(), Q.get_num_cols() - 1);
 
@@ -1558,7 +1557,7 @@ denseM<FLOAT> GMRES_IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     // Calculate x0 for starting the iteration
     // L,U in Af must be in FACT precision
     // LU_solver returns x in FACT precision
-    denseM<FLOAT> x = LU_solver(Af, bf, P);
+    denseM<FLOAT> x = LU_solver(Af, bf);
     Af = denseM<FACT>(A);
 
     denseM<FACT> Af_holder = Af;
