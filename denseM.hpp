@@ -105,6 +105,15 @@ public:
     }
 
     /**
+     * @brief Using to change the positive definite status be true, making sure matrix
+     * in Cholesky decomposition and solver maintain this status
+     */
+    void change_is_pos_def()
+    {
+        this->is_pos_def = 1;
+    }
+
+    /**
      * @brief Check if the matrix is symmetric
      * @return true if the matrix is symmetric
      * @return false if the matrix is not symmetric
@@ -147,7 +156,7 @@ public:
     class invalid_size : public invalid_argument
     {
     public:
-        invalid_size() : invalid_argument("The matrix size can only be positive."){};
+        invalid_size() : invalid_argument("The matrix size can not be zero!"){};
     };
 
     /**
@@ -250,7 +259,7 @@ bool denseM<FLOAT>::is_symmetric() const
 /**
  * @brief Construct a new denseM object with the size, the matrix vector, and a boolean
  * is-positive-definite checker. The user should know if the matrix they create is or
- * not positive definite. Input 1 in the third argument if the user know the matrix is
+ * not positive definite. Input 1 in the third argument if the matrix is
  * positive definite, input 0 if it's not and it will create a regular square matrix
  * @tparam FLOAT Any floating-point number precision
  * @param size The size of matrix
@@ -331,6 +340,7 @@ denseM<FLOAT>::denseM(const uint64_t &rows, const uint64_t &cols, const string &
 
     if (rows * cols != matrix_.size())
     {
+        cout << "File: " << name << " has issues. \n";
         throw size_mismatch();
     }
 }
@@ -466,6 +476,18 @@ void denseM<FLOAT>::resize(const uint64_t &new_row, const uint64_t &new_col)
 template <typename FLOAT>
 void denseM<FLOAT>::output(const string &filename) const
 {
+    // If the naming of the file is correct, pass this
+    if ((filename.find(".csv") != string::npos && filename[0] != '.') || (filename.find(".txt") != string::npos && filename[0] != '.'))
+    {
+    }
+    // If the output file is not with the extension of .csv or .txt, or it does not have
+    // a name in front of the extension, print message and exit
+    else
+    {
+        cout << "The extension of the output file should be '.csv' or '.txt', and the name of the file must have some character in front of the extension. \n";
+        exit(EXIT_FAILURE);
+    }
+
     ofstream out(filename);
     if (!out.is_open())
     {
@@ -729,6 +751,22 @@ denseM<FLOAT> scalar_div(const denseM<FLOAT> &M, const FLOAT &num)
 }
 
 /**
+ * @brief Create a templated power of two function for different precision
+ * floating-point numbers (Avoiding pow/powf for different precisions)
+ *
+ * @tparam FLOAT Any floating-point number precision
+ * @param num A FLOAT type floating-point number
+ * @return FLOAT Power of two of the input number
+ */
+template <typename FLOAT>
+FLOAT power_two(const FLOAT &num)
+{
+    FLOAT result = num * num;
+
+    return result;
+}
+
+/**
  * @brief Find the 2-norm of a nx1 matrix(in another word, find 2-norm of a vector)
  *
  * @tparam FLOAT Any floating-point number precision
@@ -738,6 +776,7 @@ denseM<FLOAT> scalar_div(const denseM<FLOAT> &M, const FLOAT &num)
 template <typename FLOAT>
 FLOAT norm(const denseM<FLOAT> &M)
 {
+    // If the matrix's column number is not 1, then it cannot be considered as a vector
     if (M.get_num_cols() != 1)
     {
         cout << "2-norm only works for a nx1 matrix(or vector)"
@@ -747,12 +786,14 @@ FLOAT norm(const denseM<FLOAT> &M)
     uint64_t size = M.get_num_rows();
     FLOAT sum = 0.0;
 
+    // Summing up the power of two of all the values' absolute value in the vector
     for (uint64_t i = 0; i < size; i++)
     {
-        sum += powf(fabs(M[i]), 2);
+        sum += power_two(fabs(M[i]));
     }
+    // In the end, take the square root of the summation
+    sum = sqrt(sum);
 
-    sum = powf(sum, 0.5);
     return sum;
 }
 
@@ -1119,6 +1160,10 @@ denseM<FLOAT> inverse(const denseM<FLOAT> A)
 template <typename FLOAT>
 denseM<FLOAT> cholesky(const denseM<FLOAT> &A)
 {
+    if (A.is_symmetric() == 0)
+    {
+        throw invalid_argument("This matrix is not symmetric, cannot be decomposed by Cholesky factorization");
+    }
     uint64_t size = A.get_num_cols();
     denseM<FLOAT> A_chole(size, size);
 
@@ -1136,6 +1181,10 @@ denseM<FLOAT> cholesky(const denseM<FLOAT> &A)
             // on diagonal
             if (i == j)
             {
+                if (A[i * size + i] - sum < 0)
+                {
+                    throw invalid_argument("The matrix is not positive definite, cannot be decomposed by Cholesky factorization");
+                }
                 A_chole[i * size + j] = sqrt(A[i * size + i] - sum);
             }
             // not on diagonal
@@ -1167,6 +1216,12 @@ denseM<FLOAT> cholesky_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     if (A.get_num_rows() != b.get_num_rows())
     {
         throw invalid_argument("b should have the same row number as A in linear system.");
+    }
+
+    if (A.get_is_pos_def() != 1)
+    {
+        cout << "A needs to be a positive-definite matrix to use Cholesky decomposition.";
+        exit(EXIT_FAILURE);
     }
 
     // Get A_chole (which contains both the lower triangular L and upper
@@ -1208,6 +1263,7 @@ denseM<FLOAT> cholesky_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
         // corresponding U value, divide this U number, we can get xi
         x[i - 1] = (y[i - 1] - temp) / A_chole[(i - 1) * size + (i - 1)];
     }
+
     return x;
 }
 /**
@@ -1247,8 +1303,8 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     // infinity norm of r
     RES residual = 1;
     // tolerance for stopping iteration
-    FLOAT tol = 1e-16;
-    FLOAT tol2 = 1e-14;
+    FLOAT tol = (FLOAT)(1e-16);
+    FLOAT tol2 = (FLOAT)(1e-14);
     // correction
     denseM<FLOAT> c(size, 1);
 
@@ -1260,11 +1316,15 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     // If A is a positive definite matrix, use Cholesky-decomposition
     if (A.get_is_pos_def() == 1)
     {
+        cout << "Using Cholesky decomposition"
+             << "\n";
+        Af.change_is_pos_def();
+
         denseM<FLOAT> x = cholesky_solver(Af, bf);
         while (iter != max_iter && residual > tol2 && residual != 0)
         {
             // residual must be in RES precision
-            r = b - (A * denseM<RES>(x));
+            r = denseM<RES>(b) - (denseM<RES>(A) * denseM<RES>(x));
             residual = norm_inf<RES>(r);
 
             // Using Cholesky again in FACT precision to get correction
@@ -1279,11 +1339,12 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
         cout << "The total iteration is " << iter << "\n";
         cout << "The error in the last iteration is " << residual << "\n";
         cout << "Iterative refinement succeeded!"
-             << "\n"
-             << "x = ";
+             << "\n";
         return x;
     }
 
+    cout << "Using LU decomposition"
+         << "\n";
     // Calculate x0 for starting the iteration
     // L,U in Af must be in FACT precision
     // LU_solver returns x in FACT precision
@@ -1292,7 +1353,7 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     while (iter != max_iter && residual > tol && residual != 0)
     {
         // residual must be in RES precision
-        r = b - (A * denseM<RES>(x));
+        r = denseM<RES>(b) - (denseM<RES>(A) * denseM<RES>(x));
         residual = norm_inf<RES>(r);
 
         // Using LU again in FACT precision to get correction
@@ -1308,8 +1369,7 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     cout << "The total iteration is " << iter << "\n";
     cout << "The error in the last iteration is " << residual << "\n";
     cout << "Iterative refinement succeeded!"
-         << "\n"
-         << "x = ";
+         << "\n";
     return x;
 }
 
@@ -1344,7 +1404,7 @@ denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM
     denseM<FLOAT> r0 = b - (A_holder * init_guess);
 
     // Use Arnoldi iteration to find the orthonormal vector q1,q2,...,qn for Krylov subspace
-    // First column of Qn: q1, uses in Arnoldi iteration
+    // First column of Qn: q0, uses in Arnoldi iteration
     denseM<FLOAT> q = scalar_div(r0, norm(r0));
 
     // Initialize Qn with its first column
@@ -1371,8 +1431,9 @@ denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM
     denseM<FLOAT> e1(1, 1);
     e1[0] = 1;
     denseM<FLOAT> beta_O_e1 = norm(r0) * e1;
-    denseM<FLOAT> beta_test = norm(r0) * e1;
+    // the solution
     denseM<FLOAT> x(1, 1);
+    // we will find the y to minimum the least square problem and update x0
     denseM<FLOAT> y(1, 1);
     // iteration tracker
     uint64_t n = 1;
@@ -1382,22 +1443,22 @@ denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM
         // Expand H to size n+1 x n
         H.resize(n + 1, n);
         // current Krylov vector
-
         denseM<FLOAT> v = A_holder * q;
 
-        for (uint64_t j = 0; j < n; j++)
+        for (uint64_t m = 0; m < n; m++)
         {
-            denseM<FLOAT> q_j(Q.get_num_rows(), 1);
+            // Extract qm from Q
+            denseM<FLOAT> q_m(Q.get_num_rows(), 1);
             for (uint64_t k = 0; k < Q.get_num_rows(); k++)
             {
 
-                q_j[k] = Q[k * Q.get_num_cols() + j];
+                q_m[k] = Q[k * Q.get_num_cols() + m];
             }
 
-            // transpose of q multiply v will get a 1x1 matrix, assign the value to H(j,n)
-            H[j * n + (n - 1)] = (transpose(q_j) * v)[0];
+            // transpose of q multiply v will get a 1x1 matrix, assign the value to H(m+1,n)
+            H[m * n + (n - 1)] = (transpose(q_m) * v)[0];
             // update v
-            v = v - H[j * n + (n - 1)] * q_j;
+            v = v - H[m * n + (n - 1)] * q_m;
         }
         // H[n+1,n] = 2-norm of v
         H[(n + 1 - 1) * n + (n - 1)] = norm(v);
@@ -1407,8 +1468,7 @@ denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM
 
         // Expand Qn
         Q.resize(Q.get_num_rows(), n + 1);
-
-        // Add qn+1 into the n+1th column of Qn (becomes Qn+1)
+        // Add qn into the n+1th column of Qn (becomes Qn+1)
         for (uint64_t i = 0; i < Q.get_num_rows(); i++)
         {
             Q[i * (n + 1) + n] = q[i];
@@ -1432,7 +1492,7 @@ denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM
                 if (Rn[i * cols + j] != 0)
                 {
                     // The valid elements in given rotation matrix
-                    FLOAT factor = powf(powf(Rn[j * cols + j], 2) + powf(Rn[i * cols + j], 2), 0.5);
+                    FLOAT factor = sqrt(power_two(Rn[j * cols + j]) + power_two(Rn[i * cols + j]));
                     c = Rn[j * cols + j] / factor;
                     s = Rn[i * cols + j] / factor;
 
@@ -1491,10 +1551,10 @@ denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM
 
     // cout << "norm of r: " << norm(r) << "\n";
     // restart the function if necessary
-    if (norm(r) > tol)
+    /*if (norm(r) > tol)
     {
         GMRES(A_holder, b, x);
-    }
+    }*/
     return x;
 }
 
@@ -1545,7 +1605,7 @@ denseM<FLOAT> GMRES_IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     // infinity norm of r
     RES residual = 1;
     // tolerance for stopping iteration
-    FLOAT tol = 1e-16;
+    FLOAT tol = (FLOAT)(1e-16);
     // correction
     denseM<FLOAT> c(size, 1);
 
@@ -1568,7 +1628,7 @@ denseM<FLOAT> GMRES_IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     while (iter != max_iter && residual > tol)
     {
         // residual must be in RES precision
-        r = b - (A * denseM<RES>(x));
+        r = denseM<RES>(b) - (denseM<RES>(A) * denseM<RES>(x));
         residual = norm_inf<RES>(r);
         if (residual == 0)
         {
@@ -1589,7 +1649,6 @@ denseM<FLOAT> GMRES_IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     cout << "The total iteration is " << iter << "\n";
     cout << "The error in the last iteration is " << residual << "\n";
     cout << "Iterative refinement succeeded!"
-         << "\n"
-         << "x = ";
+         << "\n";
     return x;
 }

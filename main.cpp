@@ -35,11 +35,17 @@ int main(int argc, char *argv[])
                     return 1;
                }
 
-               if (stoi(argv[3]) < 0)
+               // Check if the input size a valid positive integer
+               // it can also prevent negative integers
+               for (uint64_t i = 0; i < strlen(argv[3]); i++)
                {
-                    cout << "The size of the matrix cannot be negative";
-                    return 1;
+                    if (isdigit(argv[3][i]) == 0)
+                    {
+                         cout << "The size of the matrix needs be an positive integer!";
+                         return 1;
+                    }
                }
+
                uint64_t row = (uint64_t)(stoi(argv[3]));
                uint64_t col = (uint64_t)(stoi(argv[3]));
                // If user want the precision be float
@@ -92,7 +98,7 @@ int main(int argc, char *argv[])
                }
                else
                {
-                    cout << "Please use either float or double precision in the 3rd argument.";
+                    cout << "Please use either single or double precision in the 3rd argument.";
                }
           }
 
@@ -168,7 +174,7 @@ int main(int argc, char *argv[])
                }
                else
                {
-                    cout << "Please use either float or double precision in the 3rd argument.";
+                    cout << "Please use either single or double precision in the 3rd argument.";
                }
           }
 
@@ -264,7 +270,7 @@ int main(int argc, char *argv[])
                }
                else
                {
-                    cout << "Please use either float or double precision in the 3rd argument.";
+                    cout << "Please use either single or double precision in the 3rd argument.";
                }
           }
 
@@ -332,7 +338,7 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
-                         cout << "Please use either float or double precision in the 3rd/4th/5th argument.";
+                         cout << "Please use either single or double precision in the 3rd/4th/5th argument.";
                          return 1;
                     }
 
@@ -391,7 +397,7 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
-                         cout << "Please use either float or double precision in the 3rd/4th/5th argument.";
+                         cout << "Please use either single or double precision in the 3rd/4th/5th argument.";
                          return 1;
                     }
 
@@ -412,9 +418,132 @@ int main(int argc, char *argv[])
                }
                else
                {
-                    cout << "Please use either float or double precision in the 3rd/4th/5th argument.";
+                    cout << "Please use either single or double precision in the 3rd/4th/5th argument.";
                     return 1;
                }
+          }
+
+          // Example: main GMRES_IR single double double 3 LU1.csv LU2.csv IR_result.csv
+          // Example meaning: solve linear system by Iterative Refinement in mixed precision,
+          // (single, double, double). Using a 3x3 matrix from LU1.csv and a 3x1 matrix from
+          // LU2.csv, store the result in IR_result.csv. Using LU factorization.
+          else if (strcmp(argv[1], "GMRES_IR") == 0)
+          {
+               // Check if the number of command line argument is correct.
+               if (argc != 9)
+               {
+                    cout << "The number of arguments is incorrect. "
+                         << "You need 10 arguments in total. \n"
+                         << "Example: main IR single double double 3 LU1.csv LU2.csv LU_result.csv LU";
+                    return 1;
+               }
+
+               if (stoi(argv[5]) < 0)
+               {
+                    cout << "The size of the matrix cannot be negative";
+                    return 1;
+               }
+               uint64_t row = (uint64_t)(stoi(argv[5]));
+               uint64_t col = (uint64_t)(stoi(argv[5]));
+
+               // Using LU factorization in iterative refinement
+
+               if (strcmp(argv[3], "single") == 0)
+               {
+                    denseM<float> A(row, col, argv[6]);
+                    denseM<float> b(row, 1, argv[7]);
+                    denseM<float> x(row, 1);
+                    if (strcmp(argv[2], "single") == 0 && strcmp(argv[4], "single") == 0)
+                    {
+                         x = GMRES_IR<float, float, float>(A, b);
+                    }
+                    else if (strcmp(argv[2], "single") == 0 && strcmp(argv[4], "double") == 0)
+                    {
+                         x = GMRES_IR<float, float, double>(A, b);
+                    }
+                    else if (strcmp(argv[2], "double") == 0 && strcmp(argv[4], "single") == 0)
+                    {
+                         x = GMRES_IR<double, float, float>(A, b);
+                    }
+                    else if (strcmp(argv[2], "double") == 0 && strcmp(argv[4], "double") == 0)
+                    {
+                         x = GMRES_IR<double, float, double>(A, b);
+                    }
+                    else
+                    {
+                         cout << "Please use either single or double precision in the 3rd/4th/5th argument.";
+                         return 1;
+                    }
+
+                    if (strcmp(argv[8], "N") == 0)
+                    {
+                         cout << "The solution of the linear system by GMRES_IR in single precision using LU factorization is: \n"
+                              << x << "\n";
+                         cout << "Verify the result by norm(b - Ax): "
+                              << "\n"
+                              << norm_inf(b - (A * x)) << "\n\n";
+                         return 0;
+                    }
+                    else
+                    {
+                         x.output(argv[8]);
+                         return 0;
+                    }
+               }
+               else if (strcmp(argv[3], "double") == 0)
+               {
+                    denseM<double> A(row, col, argv[6]);
+                    denseM<double> b(row, 1, argv[7]);
+                    denseM<double> x(row, 1);
+                    if (strcmp(argv[2], "single") == 0 && strcmp(argv[4], "single") == 0)
+                    {
+                         x = GMRES_IR<float, double, float>(A, b);
+                    }
+                    else if (strcmp(argv[2], "single") == 0 && strcmp(argv[4], "double") == 0)
+                    {
+                         x = GMRES_IR<float, double, double>(A, b);
+                    }
+                    else if (strcmp(argv[2], "double") == 0 && strcmp(argv[4], "single") == 0)
+                    {
+                         x = GMRES_IR<double, double, float>(A, b);
+                    }
+                    else if (strcmp(argv[2], "double") == 0 && strcmp(argv[4], "double") == 0)
+                    {
+                         x = GMRES_IR<double, double, double>(A, b);
+                    }
+                    else
+                    {
+                         cout << "Please use either single or double precision in the 3rd/4th/5th argument.";
+                         return 1;
+                    }
+
+                    if (strcmp(argv[8], "N") == 0)
+                    {
+                         cout << "The solution of the linear system by GMRES_IR in double precision using LU factorization is: \n"
+                              << x << "\n";
+                         cout << "Verify the result by norm(b - Ax): "
+                              << "\n"
+                              << norm_inf(b - (A * x)) << "\n\n";
+                         return 0;
+                    }
+                    else
+                    {
+                         x.output(argv[8]);
+                         return 0;
+                    }
+               }
+               else
+               {
+                    cout << "Please use either single or double precision in the 3rd/4th/5th argument.";
+                    return 1;
+               }
+          }
+
+          else
+          {
+               cout << "The second argument should be one of the functions below: \n"
+                    << "LU_solver \ncholesky_solver \nGMRES \nIR \nGMRES_IR";
+               return 1;
           }
      }
      catch (const denseM<double>::size_mismatch &e)
@@ -423,7 +552,7 @@ int main(int argc, char *argv[])
      }
      catch (const denseM<double>::invalid_size &e)
      {
-          cout << "The matrix size can only be positive.\n";
+          cout << "The matrix size can not be zero!\n";
      }
      catch (const denseM<double>::index_overflow &e)
      {
