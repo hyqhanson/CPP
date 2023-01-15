@@ -169,8 +169,9 @@ Error: The LU-factorization exit-flag is not 0. This linear system cannot be sol
 2. ### Cholesky-decomposition and solver
 Using Cholesky decomposition will decompose a positive definite matrix A into a lower-triangular matrix L and its conjugate transpose $L^T$, such that $L*L^T = A$.
 $L$ can be found by formula: <br/>
-$L_{i,j} = \sqrt{A_{i,j}-\sum\nolimits_{k=1}^{j-1}L_{j,k}L^{*}_{j,k}}$ (for i = j) <br/>
-$L_{i,j} = \frac{1}{L_{j,j}}(A_{i,j}-\sum\nolimits_{k=1}^{j-1}L_{i,k}L^{*}_{j,k})$ (for i > j) <br/>
+1. $L_{i,j} = \sqrt{A_{i,j}-\sum\nolimits_{k=1}^{j-1}L_{j,k}L^{*}_{j,k}}$ (for i = j) <br/>
+2. $L_{i,j} = \frac{1}{L_{j,j}}(A_{i,j}-\sum\nolimits_{k=1}^{j-1}L_{i,k}L^{*}_{j,k})$ (for i > j) <br/>
+
 $L^T$ is the conjugate transpose of $L$, so they are stored as one single symmetric matrix as the return value of this function. It is generally faster when decompose a positive definite matrix than using LU-decomposition. <br>
 Get the combination matrix A_chole of $L$ and $L^T$ from `cholesky(A,P)`, solve linear system $LL^Tx=b$ by forward and backward substitution in `cholesky_solver`. <br>
 For solving a linear system by Cholesky factorization using `cholesky_solver`, user needs to input 7 arguments in command line. For example:
