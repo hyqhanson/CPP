@@ -25,7 +25,6 @@ using namespace std;
 
 /**
  * @brief Construct the class of dense matrix
- *
  * @tparam FLOAT Any floating-point number precision
  */
 template <typename FLOAT>
@@ -428,7 +427,6 @@ const FLOAT &denseM<FLOAT>::operator[](uint64_t index) const
  * @param new_row New size of row
  * @param new_col New size of col
  */
-
 template <typename FLOAT>
 void denseM<FLOAT>::resize(const uint64_t &new_row, const uint64_t &new_col)
 {
@@ -469,7 +467,6 @@ void denseM<FLOAT>::resize(const uint64_t &new_row, const uint64_t &new_col)
 
 /**
  * @brief Generate the output file includes the denseM object by given the filename
- *
  * @tparam FLOAT Any floating-point number precision
  * @param filename String of the filename
  */
@@ -506,11 +503,13 @@ void denseM<FLOAT>::output(const string &filename) const
             if (extension == ".csv")
             {
                 out << matrix_[i * cols_ + j];
+                // If next item is not the last item in the current row, add a comma
                 if (j + 1 != cols_)
                 {
                     out << ",";
                 }
             }
+            // If this is a txt file, use whitespace
             else
             {
                 out << matrix_[i * cols_ + j] << " ";
@@ -527,7 +526,6 @@ void denseM<FLOAT>::output(const string &filename) const
 /**
  * @brief Overloaded binary operator << to print the matrix
  * stored in denseM object. Each element separated by white space
-
  * @tparam FLOAT Any floating-point number precision
  * @param out An ostream object
  * @param M A denseM object
@@ -550,7 +548,6 @@ ostream &operator<<(ostream &out, const denseM<FLOAT> &M)
 
 /**
  * @brief Find the transpose of a dense matrix
- *
  * @tparam FLOAT Any floating-point number precision
  * @param M A dense matrix
  * @return denseM<FLOAT> The transpose of M
@@ -585,7 +582,6 @@ denseM<FLOAT> transpose(const denseM<FLOAT> &M)
 /**
  * @brief Overloaded binary operator + to calculate the summation of the
  * first denseM object and the second denseM object
- *
  * @tparam FLOAT Any floating-point number precision
  * @param M1 First dense matrix
  * @param M2 Second dense matrix
@@ -615,7 +611,6 @@ denseM<FLOAT> operator+(const denseM<FLOAT> &M1, const denseM<FLOAT> &M2)
 /**
  * @brief Overloaded binary operator - to calculate the subtraction of the
  * first denseM object and the second denseM object
- *
  * @tparam FLOAT Any floating-point number precision
  * @param M1 First dense matrix
  * @param M2 Second dense matrix
@@ -647,7 +642,6 @@ denseM<FLOAT> operator-(const denseM<FLOAT> &M1, const denseM<FLOAT> &M2)
 /**
  * @brief Overloaded binary operator * to calculate the multiplication of the
  * first denseM object and the second denseM object
- *
  * @tparam FLOAT Any floating-point number precision
  * @param M1 First dense matrix
  * @param M2 Second dense matrix
@@ -687,7 +681,6 @@ denseM<FLOAT> operator*(const denseM<FLOAT> &M1, const denseM<FLOAT> &M2)
 /**
  * @brief Overloaded binary operator * to calculate the multiplication of a scalar
  * and a denseM object
- *
  * @tparam FLOAT Any floating-point number precision
  * @param scalar A floating-point number
  * @param M A dense matrix
@@ -711,7 +704,6 @@ denseM<FLOAT> operator*(const FLOAT &scalar, const denseM<FLOAT> &M)
 /**
  * @brief Overloaded binary operator * to calculate the multiplication of a scalar
  * and a denseM object
- *
  * @tparam FLOAT Any floating-point number precision
  * @param M A dense matrix
  * @param scalar A floating-point number
@@ -725,7 +717,6 @@ denseM<FLOAT> operator*(const denseM<FLOAT> &M, const FLOAT &scalar)
 
 /**
  * @brief Divide a matrix by a floating point number
- *
  * @tparam FLOAT Any floating-point number precision
  * @param M A denseM object
  * @param num A floating point number
@@ -753,7 +744,6 @@ denseM<FLOAT> scalar_div(const denseM<FLOAT> &M, const FLOAT &num)
 /**
  * @brief Create a templated power of two function for different precision
  * floating-point numbers (Avoiding pow/powf for different precisions)
- *
  * @tparam FLOAT Any floating-point number precision
  * @param num A FLOAT type floating-point number
  * @return FLOAT Power of two of the input number
@@ -768,7 +758,6 @@ FLOAT power_two(const FLOAT &num)
 
 /**
  * @brief Find the 2-norm of a nx1 matrix(in another word, find 2-norm of a vector)
- *
  * @tparam FLOAT Any floating-point number precision
  * @param M A nx1 matrix
  * @return FLOAT The norm
@@ -799,7 +788,6 @@ FLOAT norm(const denseM<FLOAT> &M)
 
 /**
  * @brief infinity norm of a denseM. Finding the largest row sum of the matrix.
- *
  * @tparam FLOAT Any floating-point number precision
  * @param M Dense matrix
  * @return FLOAT The infinity norm of M
@@ -829,7 +817,6 @@ FLOAT norm_inf(const denseM<FLOAT> &M)
  * @brief LU-decomposition with partial pivoting, it will change the denseM object A to the
  * combination of L and U for saving memory, and modify the integer vector P to record row
  * swapping in permutation matrix
- *
  * @tparam FLOAT Any floating-point number precision
  * @param A Dense matrix, it will be modified to the combination of L and U
  * @param P A integer vector P = {0,1,2,...,n-1} for nxn matrix A
@@ -921,7 +908,6 @@ uint64_t LU_withPivot(denseM<FLOAT> &A, vector<uint64_t> &P)
 
 /**
  * @brief Get lower triangular matrix U from modified A in LU_withPivot
- *
  * @tparam FLOAT Any floating-point number precision
  * @param A The modified matrix from LU_withPivot
  * @return denseM<FLOAT> Lower triangular matrix
@@ -955,7 +941,6 @@ denseM<FLOAT> Lower_triangular(const denseM<FLOAT> &A)
 
 /**
  * @brief Get upper triangular matrix U from modified A in LU_withPivot
- *
  * @tparam FLOAT Any floating-point number precision
  * @param A The modified matrix from LU_withPivot
  * @return denseM<FLOAT> Upper triangular matrix
@@ -986,7 +971,6 @@ denseM<FLOAT> Upper_triangular(const denseM<FLOAT> &A)
 /**
  * @brief Use the updated A and P from LU_withPivot(A,P), solve linear system LUx = Pb
  * by forward and backward substitution
- *
  * @tparam FLOAT Any floating-point number precision
  * @param A nxn dense matrix
  * @param b nx1 dense matrix
@@ -1019,7 +1003,7 @@ denseM<FLOAT> LU_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     uint64_t exit_flag = LU_withPivot(A_holder, P_holder);
     if (exit_flag != 0)
     {
-        throw invalid_argument("The exit-flag is not 0. This linear system cannot solve by LU");
+        throw invalid_argument("The LU-factorization exit-flag is not 0. This linear system cannot be solved.");
     }
 
     // Starts with LUx = Pb
@@ -1077,7 +1061,6 @@ denseM<FLOAT> LU_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
 /**
  * @brief Using LU factorization to find the inverse of A, such that A^-1 = U^-1L^-1.
  * This will be used in preconditioned system of GMRES-IR
- *
  * @tparam FLOAT Any floating-point number precision
  * @param A nxn dense matrix
  * @return denseM<FLOAT> The inverse matrix of A
@@ -1107,35 +1090,28 @@ denseM<FLOAT> inverse(const denseM<FLOAT> A)
     uint64_t exit_flag = LU_withPivot(A_holder, P);
     if (exit_flag != 0)
     {
-        throw invalid_argument("The exit-flag is not 0. This linear system cannot solve by LU");
+        throw invalid_argument("LU factorization exit-flag is not 0. This matrix is not invertible");
     }
     // get L
     denseM<FLOAT> lower = Lower_triangular(A_holder);
-    // Calculate PL
-    denseM<FLOAT> PL(size, size);
-    for (uint64_t i = 0; i < size; i++)
-    {
-        for (uint64_t j = 0; j < size; j++)
-        {
-            PL[i * size + j] = lower[(P[i]) * size + j];
-        }
-    }
+
     // get U
     denseM<FLOAT> upper = Upper_triangular(A_holder);
 
     // Preallocate A inverse matrix
     denseM<FLOAT> A_inv(size, size);
 
-    // A*A^-1 = I, so P*L*U*A^-1 = I
-    // Let U*A^-1 = x, P*Lx = I; solve x then use it get A^-1
+    // A*A^-1 = I, PA*A^-1 = PI
+    // So LU*A^-1 = PI
+    // Let U*A^-1 = x, Lx = PI; solve x then use it get A^-1
     for (uint64_t i = 0; i < size; i++)
     {
-        // columns of a identity matrix
+        // initialize columns of a identity matrix
         denseM<FLOAT> e(size, 1);
-        // Column in identity matrix
-        e[i] = 1;
+        // PI's column
+        e[P[i]] = 1;
         // Solve x
-        denseM<FLOAT> x = LU_solver(PL, e);
+        denseM<FLOAT> x = LU_solver(lower, e);
         // Solve column in A_inv
         denseM<FLOAT> a_inv = LU_solver(upper, x);
 
@@ -1152,7 +1128,6 @@ denseM<FLOAT> inverse(const denseM<FLOAT> A)
 /**
  * @brief Cholesky decomposition will decompose a positive definite matrix A into a
  * lower-triangular matrix L and its conjugate transpose L_T, such that L*L_T = A
- *
  * @tparam FLOAT Any floating-point number precision
  * @param A Dense matrix, it will not be modified
  * @return denseM<FLOAT> A_chole, contains the combination of L and L_T
@@ -1183,7 +1158,7 @@ denseM<FLOAT> cholesky(const denseM<FLOAT> &A)
             {
                 if (A[i * size + i] - sum < 0)
                 {
-                    throw invalid_argument("The matrix is not positive definite, cannot be decomposed by Cholesky factorization");
+                    throw invalid_argument("This matrix is not positive definite, cannot be decomposed by Cholesky factorization");
                 }
                 A_chole[i * size + j] = sqrt(A[i * size + i] - sum);
             }
@@ -1204,7 +1179,6 @@ denseM<FLOAT> cholesky(const denseM<FLOAT> &A)
 /**
  * @brief Get the combination matrix A_chole of L and L_T from cholesky(A,P),
  * solve linear system LL_Tx=b by forward and backward substitution
- *
  * @tparam FLOAT Any floating-point number precision
  * @param A nxn dense matrix
  * @param b nx1 dense matrix
@@ -1266,14 +1240,14 @@ denseM<FLOAT> cholesky_solver(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
 
     return x;
 }
+
 /**
  * @brief Using iterative refinement to solve linear system for less round off error.
  * Including LU-decomposition and Cholesky decomposition to solve linear system inside
  * iterations. Using three floating-point number precisions to accelerate decomposition
  * by low-accuracy precision, and getting a more precise residual for updating the
  * solution in each iteration by using a high-accuracy precision
- *
- * @tparam FACT floating-point number precision used for LU-factorization
+ * @tparam FACT floating-point number precision used for LU/Cholesky-factorization
  * (need to be a low-accurate precision)
  * @tparam FLOAT Any floating-point number precision
  * (the accuracy need to be between FACT and RES)
@@ -1303,7 +1277,7 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     // infinity norm of r
     RES residual = 1;
     // tolerance for stopping iteration
-    FLOAT tol = (FLOAT)(1e-16);
+    FLOAT tol = (FLOAT)(1e-14);
     FLOAT tol2 = (FLOAT)(1e-14);
     // correction
     denseM<FLOAT> c(size, 1);
@@ -1320,6 +1294,9 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
              << "\n";
         Af.change_is_pos_def();
 
+        // first solution x0
+        // L,L^T in Af must be in FACT precision
+        // cholesky_solver returns x in FACT precision
         denseM<FLOAT> x = cholesky_solver(Af, bf);
         while (iter != max_iter && residual > tol2 && residual != 0)
         {
@@ -1337,7 +1314,6 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
         chrono::duration<double> elapsed_time_seconds = end_time - start_time;
         cout << "Elapsed time: " << elapsed_time_seconds.count() << " seconds\n";
         cout << "The total iteration is " << iter << "\n";
-        cout << "The error in the last iteration is " << residual << "\n";
         cout << "Iterative refinement succeeded!"
              << "\n";
         return x;
@@ -1367,7 +1343,6 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     chrono::duration<double> elapsed_time_seconds = end_time - start_time;
     cout << "Elapsed time: " << elapsed_time_seconds.count() << " seconds\n";
     cout << "The total iteration is " << iter << "\n";
-    cout << "The error in the last iteration is " << residual << "\n";
     cout << "Iterative refinement succeeded!"
          << "\n";
     return x;
@@ -1380,7 +1355,6 @@ denseM<FLOAT> IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
  * form in Q and produces a Hessenberg matrix H. Then using Given rotation matrix to help
  * solving the least square problem norm(H*y-norm(r)*e1), find the y that can minimize it.
  * Finally, update x0 by x = x0 + Q*y
- *
  * @tparam FLOAT Any floating-point number precision
  * @param A nxn denseM matrix
  * @param b nx1 denseM matrix
@@ -1566,7 +1540,6 @@ denseM<FLOAT> GMRES(const denseM<FLOAT> &A, const denseM<FLOAT> &b, const denseM
  * by low-accuracy precision, and getting a more precise residual for updating the
  * solution in each iteration by using a high-accuracy precision. Inside the iterative
  * refinement, the correction c will be updated by GMRES after preconditioned by U^-1L^-1
- *
  * @tparam FACT floating-point number precision used for LU-factorization
  * (need to be a low-accurate precision)
  * @tparam FLOAT Any floating-point number precision
@@ -1587,6 +1560,10 @@ denseM<FLOAT> GMRES_IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     denseM<FACT> Af(A);
     denseM<FACT> bf(b);
 
+    // change to RES precision for later usage
+    denseM<RES> Ar(A);
+    denseM<RES> br(b);
+
     // Creating original permutation matrix in vector form
     // P = {0,1,2,...,n-1} for nxn matrix A
     vector<uint64_t> P(size);
@@ -1605,11 +1582,11 @@ denseM<FLOAT> GMRES_IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     // infinity norm of r
     RES residual = 1;
     // tolerance for stopping iteration
-    FLOAT tol = (FLOAT)(1e-16);
+    FLOAT tol = (FLOAT)(1e-14);
     // correction
     denseM<FLOAT> c(size, 1);
 
-    cout << "Starting iterative refinement: "
+    cout << "Starting GMRES-Iterative refinement: "
          << "\n";
     // timing the process
     chrono::time_point start_time = chrono::steady_clock::now();
@@ -1621,34 +1598,66 @@ denseM<FLOAT> GMRES_IR(const denseM<FLOAT> &A, const denseM<FLOAT> &b)
     Af = denseM<FACT>(A);
 
     denseM<FACT> Af_holder = Af;
-    // Calculate U^-1L^-1 in FACT precision
-    denseM<FACT> A_inv = inverse(Af_holder);
-    denseM<FACT> initial_guess(c);
+
+    uint64_t exit_flag = LU_withPivot(Af_holder, P);
+    if (exit_flag != 0)
+    {
+        throw invalid_argument("The exit-flag is not 0. The upper triangular matrix may not be invertible.");
+    }
+    denseM<RES> I(size);
+    // Permutation matrix
+    denseM<RES> PI(size, size);
+    for (uint64_t i = 0; i < size; i++)
+    {
+        for (uint64_t j = 0; j < size; j++)
+        {
+            PI[i * size + j] = I[P[i] * size + j];
+        }
+    }
+
+    // L^-1 and U^-1 for preconditioned system
+    denseM<FACT> inv_lower = inverse(Lower_triangular(Af_holder));
+    denseM<FACT> inv_upper = inverse(Upper_triangular(Af_holder));
+
+    denseM<FLOAT> initial_guess = c;
 
     while (iter != max_iter && residual > tol)
     {
         // residual must be in RES precision
-        r = denseM<RES>(b) - (denseM<RES>(A) * denseM<RES>(x));
+        r = br - (Ar * denseM<RES>(x));
         residual = norm_inf<RES>(r);
         if (residual == 0)
         {
             break;
         }
-        // Using GMRES with precondition in FACT precision to get correction
-        // Precondition with LU so that (U^-1)(L^-1)*Ac = (U^-1)(L^-1)r
-        // Solve for the correction c by GMRES and store in FLOAT precision
-        denseM<FACT> cf = GMRES(A_inv * Af, A_inv * denseM<FACT>(r), initial_guess);
+        // Using GMRES with precondition in FLOAT precision to get correction
+        // Precondition with LU so that (U^-1)(L^-1)A * c = (U^-1)(L^-1)r
+        // Since we are using partial pivoting, also needs to include permutation matrix P
+        // A_hat = (U^-1)(L^-1)*PA in RES precision
+        denseM<RES> A_hat = denseM<RES>(inv_upper) * denseM<RES>(inv_lower) * PI * Ar;
+        // r_hat = (U^-1)(L^-1)*Pr in RES precision
+        denseM<RES> r_hat = denseM<RES>(inv_upper) * denseM<RES>(inv_lower) * PI * r;
 
-        c = denseM<FLOAT>(cf);
+        // Solve for the correction c by GMRES and store in FLOAT precision
+        c = GMRES(denseM<FLOAT>(A_hat), denseM<FLOAT>(r_hat), initial_guess);
+        // cout << "norm c :" << c << "\n";
+        // If the norm of correction is very small, break the while loop
+        if (norm_inf(c) < 1e-100)
+        {
+            break;
+        }
+
+        initial_guess = c;
+
         x = x + c;
+
         iter++;
     }
     chrono::time_point end_time = chrono::steady_clock::now();
     chrono::duration<double> elapsed_time_seconds = end_time - start_time;
     cout << "Elapsed time: " << elapsed_time_seconds.count() << " seconds\n";
     cout << "The total iteration is " << iter << "\n";
-    cout << "The error in the last iteration is " << residual << "\n";
-    cout << "Iterative refinement succeeded!"
+    cout << "GMRES-Iterative refinement succeeded!"
          << "\n";
     return x;
 }
